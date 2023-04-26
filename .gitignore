@@ -16,3 +16,4 @@ mono_crash.*.json
 
 # godot-cpp
 godot-cpp/custom.py
+godot-cpp/extension_api.json
