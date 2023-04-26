@@ -2,3 +2,4 @@
 	path = godot-cpp
 	url = git@github.com:godotengine/godot-cpp.git
 	branch = godot-4.0.2-stable
+	ignore = dirty
