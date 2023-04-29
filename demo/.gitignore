@@ -18,9 +18,3 @@ mono_crash.*.json
 godot-cpp/
 godot-cpp/custom.py
 godot-cpp/extension_api.json
-.cache/
-compile_commands.json
-.sconsign.dblite
-.vscode/
-
-demo/bin/libgddoom.*

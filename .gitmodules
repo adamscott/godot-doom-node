@@ -6,3 +6,4 @@
 [submodule "thirdparty/doomgeneric"]
 	path = thirdparty/doomgeneric
 	url = git@github.com:ozkl/doomgeneric.git
+	ignore = dirty
