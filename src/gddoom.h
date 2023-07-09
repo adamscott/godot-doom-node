@@ -5,7 +5,7 @@
 #include <godot_cpp/core/class_db.hpp>
 
 extern "C" {
-#include "doomgeneric/doomgeneric.h"
+#include "spawn.h"
 }
 
 namespace godot {

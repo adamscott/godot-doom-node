@@ -1,8 +1,39 @@
 #!/usr/bin/env python
 import os
 import sys
+from SCons.Errors import UserError
 
-env = SConscript("godot-cpp/SConstruct")
+def normalize_path(val):
+    return val if os.path.isabs(val) else os.path.join(env.Dir("#").abspath, val)
+
+
+def validate_compiledb_file(key, val, env):
+    if not os.path.isdir(os.path.dirname(normalize_path(val))):
+        raise UserError("Directory ('%s') does not exist: %s" % (key, os.path.dirname(val)))
+
+
+def get_compiledb_file(env):
+    return normalize_path(env.get("compiledb_file", "compile_commands.json"))
+
+env = Environment()
+customs = ["custom.py"]
+opts = Variables(customs, ARGUMENTS)
+opts.Add(BoolVariable("compiledb", "Generate compilation DB (`compile_commands.json`) for external tools", False))
+opts.Add(
+    PathVariable(
+        "compiledb_file",
+        help="Path to a custom compile_commands.json",
+        default=normalize_path("compile_commands.json"),
+        validator=validate_compiledb_file,
+    )
+)
+opts.Update(env)
+
+clonedEnv = env.Clone()
+clonedEnv["compiledb"] = False
+env = SConscript("godot-cpp/SConstruct", {
+    "env": clonedEnv
+})
 
 # For reference:
 # - CCFLAGS are compilation flags shared between C and C++
@@ -13,96 +44,23 @@ env = SConscript("godot-cpp/SConstruct")
 # - LINKFLAGS are for linking flags
 
 # tweak this if you want to use different folders, or more folders, to store your source code in.
-env.Append(CPPPATH=["src/", "thirdparty/doomgeneric"])
+env.Append(CPPPATH=[os.path.abspath("src/"), os.path.abspath("thirdparty/doomgeneric")])
 
 sources = Glob("src/*.cpp")
-doomgeneric_files = [
-    "am_map.c",
-    "d_event.c",
-    "d_items.c",
-    "d_iwad.c",
-    "d_loop.c",
-    "d_main.c",
-    "d_mode.c",
-    "d_net.c",
-    "doomdef.c",
-    "doomgeneric.c",
-    "doomstat.c",
-    "dstrings.c",
-    "dummy.c",
-    "f_finale.c",
-    "f_wipe.c",
-    "g_game.c",
-    "gusconf.c",
-    "hu_lib.c",
-    "hu_stuff.c",
-    "i_cdmus.c",
-    "icon.c",
-    "i_endoom.c",
-    "i_input.c",
-    "i_joystick.c",
-    "info.c",
-    "i_scale.c",
-    "i_sound.c",
-    "i_system.c",
-    "i_timer.c",
-    "i_video.c",
-    "m_argv.c",
-    "m_bbox.c",
-    "m_cheat.c",
-    "m_config.c",
-    "m_controls.c",
-    "memio.c",
-    "m_fixed.c",
-    "m_menu.c",
-    "m_misc.c",
-    "m_random.c",
-    "mus2mid.c",
-    "p_ceilng.c",
-    "p_doors.c",
-    "p_enemy.c",
-    "p_floor.c",
-    "p_inter.c",
-    "p_lights.c",
-    "p_map.c",
-    "p_maputl.c",
-    "p_mobj.c",
-    "p_plats.c",
-    "p_pspr.c",
-    "p_saveg.c",
-    "p_setup.c",
-    "p_sight.c",
-    "p_spec.c",
-    "p_switch.c",
-    "p_telept.c",
-    "p_tick.c",
-    "p_user.c",
-    "r_bsp.c",
-    "r_data.c",
-    "r_draw.c",
-    "r_main.c",
-    "r_plane.c",
-    "r_segs.c",
-    "r_sky.c",
-    "r_things.c",
-    "sha1.c",
-    "sounds.c",
-    "s_sound.c",
-    "statdump.c",
-    "st_lib.c",
-    "st_stuff.c",
-    "tables.c",
-    "v_video.c",
-    "w_checksum.c",
-    "w_file.c",
-    "w_file_stdc.c",
-    "wi_stuff.c",
-    "w_main.c",
-    "w_wad.c",
-    "z_zone.c",
-]
+spawn_sources = Glob("src/*.c")
+doomgeneric_files = Glob("thirdparty/doomgeneric/doomgeneric/*.c", exclude=[
+    "thirdparty/doomgeneric/doomgeneric/doomgeneric_emscripten.c",
+    "thirdparty/doomgeneric/doomgeneric/doomgeneric_sdl.c",
+    "thirdparty/doomgeneric/doomgeneric/doomgeneric_soso.c",
+    "thirdparty/doomgeneric/doomgeneric/doomgeneric_sosox.c",
+    "thirdparty/doomgeneric/doomgeneric/doomgeneric_win.c",
+    "thirdparty/doomgeneric/doomgeneric/doomgeneric_xlib.c",
+    "thirdparty/doomgeneric/doomgeneric/i_sdlmusic.c",
+    "thirdparty/doomgeneric/doomgeneric/i_sdlsound.c",
+])
 
-sources += [f"thirdparty/doomgeneric/doomgeneric/{path}" for path in doomgeneric_files]
+sources += doomgeneric_files
+spawn_sources += doomgeneric_files
 
 if env["platform"] == "macos":
     library = env.SharedLibrary(
@@ -116,5 +74,14 @@ else:
         "demo/bin/gddoom{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
         source=sources,
     )
+program = env.Program(
+    "demo/bin/gddoom-spawn{}".format(env["suffix"]),
+    source=spawn_sources
+)
 
-Default(library)
+Default(library, program)
+# Default(program)
+
+if env.get("compiledb", False):
+    env.Tool("compilation_db")
+    env.Alias("compiledb", env.CompilationDatabase(env.get("compiledb_file", None)))
