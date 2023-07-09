@@ -58,8 +58,6 @@ doomgeneric_files = Glob("thirdparty/doomgeneric/doomgeneric/*.c", exclude=[
     "thirdparty/doomgeneric/doomgeneric/i_sdlmusic.c",
     "thirdparty/doomgeneric/doomgeneric/i_sdlsound.c",
 ])
-
-sources += doomgeneric_files
 spawn_sources += doomgeneric_files
 
 if env["platform"] == "macos":

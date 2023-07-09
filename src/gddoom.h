@@ -5,26 +5,20 @@
 #include <godot_cpp/core/class_db.hpp>
 
 extern "C" {
+#include "common.h"
 #include "spawn.h"
 }
 
 namespace godot {
 
-class GDDoomInstance {
-private:
-	static GDDoomInstance *_singleton;
-
-public:
-	static GDDoomInstance *get_singleton();
-
-	void tick();
-
-	GDDoomInstance();
-	~GDDoomInstance();
-};
-
 class GDDoom : public Control {
 	GDCLASS(GDDoom, Control);
+
+private:
+	SharedMemory *_shm;
+	int _shm_fd;
+
+	void init_shm();
 
 protected:
 	static void _bind_methods();
