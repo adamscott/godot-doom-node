@@ -1,7 +1,7 @@
 [submodule "godot-cpp"]
 	path = godot-cpp
 	url = git@github.com:godotengine/godot-cpp.git
-	branch = godot-4.0.2-stable
+	branch = godot-4.1-stable
 	ignore = dirty
 [submodule "thirdparty/doomgeneric"]
 	path = thirdparty/doomgeneric
