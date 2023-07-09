@@ -55,12 +55,13 @@ GDDoom::GDDoom() {
 	init_shm();
 
 	String path = ProjectSettings::get_singleton()->globalize_path("res://bin/gddoom-spawn.linux.template_debug.x86_64");
+	String doom1_wad = ProjectSettings::get_singleton()->globalize_path("res://doom/DOOM1.WAD");
 
 	if (fork() == 0) {
 		char *args[] = {
 			const_cast<char *>(path.utf8().get_data()),
 			const_cast<char *>(String("-iwad").utf8().get_data()),
-			const_cast<char *>(String("hello.wad").utf8().get_data()),
+			const_cast<char *>(doom1_wad.utf8().get_data()),
 			NULL
 		};
 
