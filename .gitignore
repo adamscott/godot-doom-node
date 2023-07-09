@@ -15,12 +15,19 @@ data_*/
 mono_crash.*.json
 
 # godot-cpp
-godot-cpp/
-godot-cpp/custom.py
-godot-cpp/extension_api.json
-.cache/
-compile_commands.json
-.sconsign.dblite
-.vscode/
+/godot-cpp
 
 demo/bin/libgddoom.*
+
+# VSCode
+.vscode/settings.json
+
+# Scons build items
+*.os
+*.o
+*.hpp
+.cache/
+.sconsign.dblite
+
+# Tool-versions
+.tool-versions
