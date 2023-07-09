@@ -15,6 +15,7 @@
 #include <doomgeneric/doomgeneric.h>
 
 #include <common.h>
+#include <unistd.h>
 
 int shm_fd = 0;
 SharedMemory *shm = NULL;
@@ -35,12 +36,12 @@ int main(int argc, char **argv) {
     signal(SIGUSR1, signal_handler);
 
     if (argc < 3) {
-        printf("Error, missing arguments.");
+        printf("Error, missing arguments.\n");
         return EXIT_FAILURE;
     }
 
     if (strcmp(argv[1], "-id") == -1) {
-        printf("first argument must be `-id`");
+        printf("first argument must be `-id`\n");
         return EXIT_FAILURE;
     }
 
@@ -54,23 +55,17 @@ int main(int argc, char **argv) {
     int shm_number_id = atoi(argv[2]);
     char shm_id[256];
     int res = sprintf(shm_id, "%s-%06d", GDDOOM_SPAWN_SHM_NAME, shm_number_id);
-    if (res < 0) {
-        printf("sprintf failed");
-        exit(EXIT_FAILURE);
-    }
     shm_fd = shm_open(shm_id, O_RDWR, S_IRWXU | S_IRWXG);
     if (shm_fd == -1) {
-        printf("This failed.");
+        printf("shm_open failed.\n");
     }
     shm = mmap(0, sizeof(SharedMemory), PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
-    for (int i = 0; i < new_argc; i++) {
-        printf("new_argv[%d]: %s", i, new_argv[i]);
-    }
-
     doomgeneric_Create(new_argc, new_argv);
 
-    while (true) {}
+    while (true) {
+        usleep(10);
+    }
 
     free(new_argv);
     shm_fd = 0;
@@ -80,7 +75,6 @@ int main(int argc, char **argv) {
 }
 
 void tick() {
-    printf("tick!");
     doomgeneric_Tick();
 }
 

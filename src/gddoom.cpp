@@ -93,24 +93,22 @@ void GDDoom::_thread_func() {
 			break;
 		}
 
-		// UtilityFunctions::print(vformat("me? %s %s %p", this->get_instance_id(), _spawn_pid, this->_shm));
-		UtilityFunctions::print("thread");
 		OS::get_singleton()->delay_msec(1000);
 		// Send the tick signal
 		kill(_spawn_pid, SIGUSR1);
 
 		// // Let's wait for the shared memory to be ready
-		// while (!this->_shm->ready) {
-		// 	OS::get_singleton()->delay_usec(100);
-		// }
+		while (!this->_shm->ready) {
+			OS::get_singleton()->delay_usec(100);
+		}
 
-		// // The shared memory is ready
+		// The shared memory is ready
 
-		// // Let's sleep the time Doom asks
-		// usleep(this->_shm->sleep_ms * 1000);
+		// Let's sleep the time Doom asks
+		usleep(this->_shm->sleep_ms * 1000);
 
-		// // Reset the shared memory
-		// this->_shm->ready = false;
+		// Reset the shared memory
+		this->_shm->ready = false;
 	}
 }
 
@@ -119,15 +117,15 @@ void GDDoom::_init_shm() {
 	_last_id += 1;
 
 	const char *spawn_id = vformat("%s-%06d", GDDOOM_SPAWN_SHM_NAME, _id).utf8().get_data();
-	UtilityFunctions::print(vformat("my spawn id = %s", spawn_id));
 	strcpy(_shm_id, spawn_id);
-	UtilityFunctions::print("after strcpy");
+
 	shm_unlink(_shm_id);
 	_shm_fd = shm_open(_shm_id, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (_shm_fd < 0) {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));
 		return;
 	}
+
 	ftruncate(_shm_fd, sizeof(SharedMemory));
 	_shm = (SharedMemory *)mmap(0, sizeof(SharedMemory), PROT_WRITE, MAP_SHARED, _shm_fd, 0);
 	if (_shm == nullptr) {
