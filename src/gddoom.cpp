@@ -4,6 +4,7 @@
 #include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/classes/project_settings.hpp"
 #include "godot_cpp/classes/thread.hpp"
+#include "godot_cpp/classes/time.hpp"
 #include "godot_cpp/core/class_db.hpp"
 #include "godot_cpp/variant/string.hpp"
 #include "godot_cpp/variant/utility_functions.hpp"
@@ -43,25 +44,33 @@ void GDDoom::_ready() {
 
 void GDDoom::_enter_tree() {
 	_init_shm();
+	_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
 	String path = ProjectSettings::get_singleton()->globalize_path("res://bin/gddoom-spawn.linux.template_debug.x86_64");
 	String doom1_wad = ProjectSettings::get_singleton()->globalize_path("res://doom/DOOM1.WAD");
+	const char *doom1_wad_char = doom1_wad.utf8().get_data();
+
+	// UtilityFunctions::print(vformat("doom1_wad: %s %s", doom1_wad, doom1_wad_char));
 
 	_spawn_pid = fork();
 	if (_spawn_pid == 0) {
+		// This is the forked child
+
 		char *args[] = {
-			const_cast<char *>(path.utf8().get_data()),
-			const_cast<char *>(String("-id").utf8().get_data()),
-			const_cast<char *>(_shm_id),
-			const_cast<char *>(String("-iwad").utf8().get_data()),
-			const_cast<char *>(doom1_wad.utf8().get_data()),
+			strdup(path.utf8().get_data()),
+			strdup("-id"),
+			strdup(_shm_id),
+			strdup("-iwad"),
+			strdup(doom1_wad_char),
 			NULL
 		};
 
-		int val = execvp(args[0], args);
-		if (val != EXIT_SUCCESS) {
-			UtilityFunctions::printerr("execvp returned %d", val);
-		}
+		char *envp[] = {
+			NULL
+		};
+
+		UtilityFunctions::print("launching execve");
+		execve(args[0], args, envp);
 		return;
 	}
 
@@ -84,22 +93,43 @@ void GDDoom::_exit_tree() {
 	if (result < 0) {
 		UtilityFunctions::printerr(vformat("ERROR unlinking shm %s: %s", _shm_id, strerror(errno)).utf8().get_data());
 	}
+
+	kill(_spawn_pid, SIGKILL);
 }
 
 void GDDoom::_thread_func() {
 	UtilityFunctions::print("_thread_func START!");
+
 	while (true) {
+		UtilityFunctions::print("Start thread loop");
 		if (this->_exiting) {
-			break;
+			return;
 		}
 
-		OS::get_singleton()->delay_msec(1000);
 		// Send the tick signal
+		// UtilityFunctions::print(vformat("Send SIGUSR1 signal to %s!", _spawn_pid));
+		while (!this->_shm->init) {
+			if (this->_exiting) {
+				return;
+			}
+			OS::get_singleton()->delay_usec(10);
+		}
 		kill(_spawn_pid, SIGUSR1);
+
+		// OS::get_singleton()->delay_msec(1000);
+		_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
 		// // Let's wait for the shared memory to be ready
 		while (!this->_shm->ready) {
-			OS::get_singleton()->delay_usec(100);
+			if (this->_exiting) {
+				return;
+			}
+			OS::get_singleton()->delay_usec(10);
+		}
+		UtilityFunctions::print("thread discovered that shm is ready!");
+
+		if (this->_exiting) {
+			return;
 		}
 
 		// The shared memory is ready
