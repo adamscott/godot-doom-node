@@ -33,12 +33,14 @@ private:
 	Vector<String> _uuids;
 
 	bool enabled = false;
-	String path;
+	String wad_path;
 
 	void _init_shm();
 	void _thread_func();
 	void init_doom();
 	void kill_doom();
+
+	void update_doom();
 
 protected:
 	static void _bind_methods();
@@ -50,7 +52,7 @@ public:
 	bool get_enabled();
 	void set_enabled(bool p_enabled);
 	String get_wad_path();
-	void set_wad_path(String p_path);
+	void set_wad_path(String p_wad_path);
 
 	void _enter_tree() override;
 	void _exit_tree() override;

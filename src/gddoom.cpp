@@ -2,6 +2,8 @@
 #include <cstring>
 
 #include "doomgeneric/doomtype.h"
+#include "godot_cpp/classes/file_access.hpp"
+#include "godot_cpp/classes/global_constants.hpp"
 #include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/classes/project_settings.hpp"
 #include "godot_cpp/classes/thread.hpp"
@@ -46,7 +48,7 @@ void GDDoom::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_wad_path"), &GDDoom::get_wad_path);
 	ClassDB::bind_method(D_METHOD("set_wad_path", "wad_path"), &GDDoom::set_wad_path);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "doom_wad_path"), "set_wad_path", "get_wad_path");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "doom_wad_path", PROPERTY_HINT_FILE, "*.wad"), "set_wad_path", "get_wad_path");
 }
 
 bool GDDoom::get_enabled() {
@@ -64,11 +66,19 @@ void GDDoom::set_enabled(bool p_enabled) {
 }
 
 String GDDoom::get_wad_path() {
-	return path;
+	return wad_path;
 }
 
-void GDDoom::set_wad_path(String p_path) {
-	path = p_path;
+void GDDoom::set_wad_path(String p_wad_path) {
+	wad_path = p_wad_path;
+}
+
+void GDDoom::update_doom() {
+	if (enabled && FileAccess::file_exists(wad_path)) {
+		init_doom();
+	} else {
+		kill_doom();
+	}
 }
 
 void GDDoom::init_doom() {
@@ -79,7 +89,7 @@ void GDDoom::init_doom() {
 	_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
 	String path = ProjectSettings::get_singleton()->globalize_path("res://bin/gddoom-spawn.linux.template_debug.x86_64");
-	String doom1_wad = ProjectSettings::get_singleton()->globalize_path("res://doom/DOOM1.WAD");
+	String doom1_wad = ProjectSettings::get_singleton()->globalize_path(wad_path);
 	const char *shm_test = vformat("%s", _shm_id).utf8().get_data();
 	const char *doom1_wad_char = doom1_wad.utf8().get_data();
 
@@ -116,6 +126,10 @@ void GDDoom::init_doom() {
 }
 
 void GDDoom::kill_doom() {
+	if (_spawn_pid == 0) {
+		return;
+	}
+
 	UtilityFunctions::print("kill_doom()");
 	_exiting = true;
 	if (!_thread.is_null()) {
@@ -131,6 +145,7 @@ void GDDoom::kill_doom() {
 	if (_spawn_pid > 0) {
 		kill(_spawn_pid, SIGKILL);
 	}
+	_spawn_pid = 0;
 	UtilityFunctions::print("ending kill doom!");
 }
 
