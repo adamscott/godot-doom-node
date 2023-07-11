@@ -1,5 +1,6 @@
 #include <spawn.h>
 
+#include <common.h>
 #include <err.h>
 #include <errno.h>
 #include <signal.h>
@@ -7,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+#include <unistd.h>
 // Shared memory:
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -14,11 +17,8 @@
 
 #include <doomgeneric/doomgeneric.h>
 
-#include <common.h>
-#include <sys/time.h>
-#include <unistd.h>
-
 bool terminate = false;
+bool start_loop = false;
 int shm_fd = 0;
 SharedMemory *shm = NULL;
 
@@ -26,7 +26,8 @@ void signal_handler(int signal) {
 	printf("signal_handler %d\n", signal);
 	switch (signal) {
 		case SIGUSR1: {
-			tick();
+			printf("start_loop = true\n");
+			start_loop = true;
 		} break;
 
 		default: {
@@ -83,9 +84,14 @@ int main(int argc, char **argv) {
 		if (terminate) {
 			exit(EXIT_SUCCESS);
 		}
-		// usleep(10);
 
-		tick();
+		if (start_loop) {
+			start_loop = false;
+			tick();
+		}
+
+		usleep(10);
+		// sleep(1);
 	}
 
 	// free(new_argv);
