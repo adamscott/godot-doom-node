@@ -21,7 +21,7 @@ class GDDoom : public Control {
 private:
 	static int _last_id;
 	int _id;
-	char _shm_id[sizeof(GDDOOM_SPAWN_SHM_ID)] = GDDOOM_SPAWN_SHM_ID;
+	char _shm_id[255];
 
 	bool _exiting = false;
 
@@ -32,8 +32,13 @@ private:
 
 	Vector<String> _uuids;
 
+	bool enabled = false;
+	String path;
+
 	void _init_shm();
 	void _thread_func();
+	void init_doom();
+	void kill_doom();
 
 protected:
 	static void _bind_methods();
@@ -41,6 +46,11 @@ protected:
 public:
 	GDDoom();
 	~GDDoom();
+
+	bool get_enabled();
+	void set_enabled(bool p_enabled);
+	String get_wad_path();
+	void set_wad_path(String p_path);
 
 	void _enter_tree() override;
 	void _exit_tree() override;

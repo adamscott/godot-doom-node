@@ -67,18 +67,20 @@ int main(int argc, char **argv) {
 		new_argv[i - 2] = strdup(argv[i]);
 	}
 
-	int shm_number_id = atoi(argv[2]);
 	char shm_id[256];
-	int res = sprintf(shm_id, "%s-%06d", GDDOOM_SPAWN_SHM_NAME, shm_number_id);
-	shm_fd = shm_open(shm_id, O_RDWR, S_IRWXU | S_IRWXG);
+	strcpy(shm_id, argv[2]);
+	shm_fd = shm_open(shm_id, O_RDWR, 0666);
 	if (shm_fd == -1) {
-		printf("shm_open failed.\n");
+		printf("shm_open failed. %s\n", strerror(errno));
 	}
 	shm = mmap(0, sizeof(SharedMemory), PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
 	printf("new_argc: %d, new_argv[1]: %s, new_argv[2]: %s\n", new_argc, new_argv[1], new_argv[2]);
 	doomgeneric_Create(new_argc, new_argv);
 	printf("after doomgeneric_Create\n");
+
+	shm->init = true;
+	printf("shm->init = true\n");
 
 	while (true) {
 		if (terminate) {
@@ -124,7 +126,7 @@ void DG_DrawFrame() {
 }
 
 void DG_SleepMs(uint32_t ms) {
-	shm->init = true;
+	// shm->init = true;
 	// printf("DG_SleepMs(%d)\n", ms);
 	shm->sleep_ms = ms;
 	usleep(ms * 1000);
@@ -147,5 +149,10 @@ int DG_GetKey(int *pressed, unsigned char *key) {
 }
 
 void DG_SetWindowTitle(const char *title) {
-	printf("DG_SetWindowTitle(%s)", title);
+	printf("DG_SetWindowTitle(%s)\n", title);
+	if (sizeof(title) > sizeof(shm->window_title)) {
+		printf("WARN: Could not copy window title \"%s\", as it's longer than 255 characters.", title);
+		return;
+	}
+	strcpy(shm->window_title, title);
 }

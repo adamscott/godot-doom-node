@@ -1,11 +1,14 @@
 #include <signal.h>
 #include <cstring>
 
+#include "doomgeneric/doomtype.h"
 #include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/classes/project_settings.hpp"
 #include "godot_cpp/classes/thread.hpp"
 #include "godot_cpp/classes/time.hpp"
 #include "godot_cpp/core/class_db.hpp"
+#include "godot_cpp/core/object.hpp"
+#include "godot_cpp/core/property_info.hpp"
 #include "godot_cpp/variant/string.hpp"
 #include "godot_cpp/variant/utility_functions.hpp"
 #include "godot_cpp/variant/variant.hpp"
@@ -34,20 +37,50 @@ using namespace godot;
 
 void GDDoom::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_thread_func"), &GDDoom::_thread_func);
+
+	ADD_GROUP("DOOM", "doom_");
+
+	ClassDB::bind_method(D_METHOD("get_enabled"), &GDDoom::get_enabled);
+	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &GDDoom::set_enabled);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "doom_enabled"), "set_enabled", "get_enabled");
+
+	ClassDB::bind_method(D_METHOD("get_wad_path"), &GDDoom::get_wad_path);
+	ClassDB::bind_method(D_METHOD("set_wad_path", "wad_path"), &GDDoom::set_wad_path);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "doom_wad_path"), "set_wad_path", "get_wad_path");
 }
 
-void GDDoom::_process(double delta) {
+bool GDDoom::get_enabled() {
+	return enabled;
 }
 
-void GDDoom::_ready() {
+void GDDoom::set_enabled(bool p_enabled) {
+	enabled = p_enabled;
+
+	if (p_enabled) {
+		init_doom();
+	} else {
+		kill_doom();
+	}
 }
 
-void GDDoom::_enter_tree() {
+String GDDoom::get_wad_path() {
+	return path;
+}
+
+void GDDoom::set_wad_path(String p_path) {
+	path = p_path;
+}
+
+void GDDoom::init_doom() {
+	_exiting = false;
+
+	UtilityFunctions::print("init_doom!");
 	_init_shm();
 	_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
 	String path = ProjectSettings::get_singleton()->globalize_path("res://bin/gddoom-spawn.linux.template_debug.x86_64");
 	String doom1_wad = ProjectSettings::get_singleton()->globalize_path("res://doom/DOOM1.WAD");
+	const char *shm_test = vformat("%s", _shm_id).utf8().get_data();
 	const char *doom1_wad_char = doom1_wad.utf8().get_data();
 
 	// UtilityFunctions::print(vformat("doom1_wad: %s %s", doom1_wad, doom1_wad_char));
@@ -55,11 +88,12 @@ void GDDoom::_enter_tree() {
 	_spawn_pid = fork();
 	if (_spawn_pid == 0) {
 		// This is the forked child
+		UtilityFunctions::print("Hi! From the forked child!");
 
 		char *args[] = {
 			strdup(path.utf8().get_data()),
 			strdup("-id"),
-			strdup(_shm_id),
+			strdup(shm_test),
 			strdup("-iwad"),
 			strdup(doom1_wad_char),
 			NULL
@@ -81,20 +115,38 @@ void GDDoom::_enter_tree() {
 	_thread->start(func);
 }
 
-void GDDoom::_exit_tree() {
-	UtilityFunctions::print("_exit_tree()");
+void GDDoom::kill_doom() {
+	UtilityFunctions::print("kill_doom()");
 	_exiting = true;
 	if (!_thread.is_null()) {
 		_thread->wait_to_finish();
 	}
 
-	UtilityFunctions::print(vformat("Removing %s", _shm_id).utf8().get_data());
+	UtilityFunctions::print(vformat("Removing %s", _shm_id));
 	int result = shm_unlink(_shm_id);
 	if (result < 0) {
-		UtilityFunctions::printerr(vformat("ERROR unlinking shm %s: %s", _shm_id, strerror(errno)).utf8().get_data());
+		UtilityFunctions::printerr(vformat("ERROR unlinking shm %s: %s", _shm_id, strerror(errno)));
 	}
 
-	kill(_spawn_pid, SIGKILL);
+	if (_spawn_pid > 0) {
+		kill(_spawn_pid, SIGKILL);
+	}
+	UtilityFunctions::print("ending kill doom!");
+}
+
+void GDDoom::_process(double delta) {
+}
+
+void GDDoom::_ready() {
+}
+
+void GDDoom::_enter_tree() {
+}
+
+void GDDoom::_exit_tree() {
+	if (enabled) {
+		kill_doom();
+	}
 }
 
 void GDDoom::_thread_func() {
@@ -112,8 +164,11 @@ void GDDoom::_thread_func() {
 			if (this->_exiting) {
 				return;
 			}
-			OS::get_singleton()->delay_usec(10);
+			UtilityFunctions::print("thread: not init...");
+			// OS::get_singleton()->delay_usec(10);
+			OS::get_singleton()->delay_msec(1000);
 		}
+		UtilityFunctions::print("thread detects shm is init!");
 		kill(_spawn_pid, SIGUSR1);
 
 		// OS::get_singleton()->delay_msec(1000);
@@ -149,7 +204,9 @@ void GDDoom::_init_shm() {
 	const char *spawn_id = vformat("%s-%06d", GDDOOM_SPAWN_SHM_NAME, _id).utf8().get_data();
 	strcpy(_shm_id, spawn_id);
 
+	UtilityFunctions::print(vformat("gddoom init_shm unlinking preemptively \"%s\"", _shm_id));
 	shm_unlink(_shm_id);
+	UtilityFunctions::print(vformat("gddoom init_shm open shm \"%s\"", _shm_id));
 	_shm_fd = shm_open(_shm_id, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (_shm_fd < 0) {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));

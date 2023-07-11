@@ -12,6 +12,7 @@
 typedef struct SharedMemory {
 	uint64_t ticks_msec;
 	uint32_t screen_buffer;
+	char window_title[255];
 	char keys_pressed[100];
 	uint32_t sleep_ms;
 	bool terminate;

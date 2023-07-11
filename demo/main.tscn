@@ -4,3 +4,11 @@
 
 [node name="Main" type="Node"]
 script = ExtResource("1_bak3v")
+
+[node name="GDDoom" type="GDDoom" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="GDDoom2" type="GDDoom" parent="."]
+offset_right = 40.0
+offset_bottom = 40.0
