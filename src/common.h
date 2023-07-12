@@ -11,7 +11,7 @@
 
 typedef struct SharedMemory {
 	uint64_t ticks_msec;
-	uint32_t screen_buffer;
+	unsigned char *screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
 	char window_title[255];
 	char keys_pressed[100];
 	uint32_t sleep_ms;

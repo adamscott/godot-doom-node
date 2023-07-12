@@ -1,16 +1,25 @@
 #include <signal.h>
+#include <cstdint>
 #include <cstring>
 
+#include "doomgeneric/doomgeneric.h"
 #include "doomgeneric/doomtype.h"
+#include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/file_access.hpp"
 #include "godot_cpp/classes/global_constants.hpp"
+#include "godot_cpp/classes/image_texture.hpp"
 #include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/classes/project_settings.hpp"
+#include "godot_cpp/classes/scene_tree.hpp"
+#include "godot_cpp/classes/texture_rect.hpp"
 #include "godot_cpp/classes/thread.hpp"
 #include "godot_cpp/classes/time.hpp"
 #include "godot_cpp/core/class_db.hpp"
+#include "godot_cpp/core/memory.hpp"
 #include "godot_cpp/core/object.hpp"
 #include "godot_cpp/core/property_info.hpp"
+#include "godot_cpp/variant/packed_byte_array.hpp"
+#include "godot_cpp/variant/packed_int32_array.hpp"
 #include "godot_cpp/variant/string.hpp"
 #include "godot_cpp/variant/utility_functions.hpp"
 #include "godot_cpp/variant/variant.hpp"
@@ -150,18 +159,44 @@ void GDDoom::kill_doom() {
 }
 
 void GDDoom::_process(double delta) {
+	if (_spawn_pid == 0) {
+		return;
+	}
+
+	screen_buffer_array.resize(sizeof(screen_buffer));
+	screen_buffer_array.clear();
+
+	for (int i = 0; i < DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4; i += 4) {
+		// screen_buffer_array.insert(i, screen_buffer[i]);
+		screen_buffer_array.insert(i, screen_buffer[i + 2]);
+		screen_buffer_array.insert(i + 1, screen_buffer[i + 1]);
+		screen_buffer_array.insert(i + 2, screen_buffer[i + 0]);
+		screen_buffer_array.insert(i + 3, 255 - screen_buffer[i + 3]);
+	}
+
+	Ref<Image> image = Image::create_from_data(DOOMGENERIC_RESX, DOOMGENERIC_RESY, false, Image::Format::FORMAT_RGBA8, screen_buffer_array);
+	if (img_texture->get_image().is_null()) {
+		img_texture->set_image(image);
+	} else {
+		img_texture->update(image);
+	}
 }
 
 void GDDoom::_ready() {
+	img_texture.instantiate();
+	set_texture(img_texture);
 }
 
 void GDDoom::_enter_tree() {
+	UtilityFunctions::print("_enter_tree()");
 }
 
 void GDDoom::_exit_tree() {
 	if (enabled) {
 		kill_doom();
 	}
+
+	// texture_rect->queue_free();
 }
 
 void GDDoom::_thread_func() {
@@ -197,12 +232,11 @@ void GDDoom::_thread_func() {
 			OS::get_singleton()->delay_usec(10);
 		}
 		UtilityFunctions::print("thread discovered that shm is ready!");
-
 		if (this->_exiting) {
 			return;
 		}
-
 		// The shared memory is ready
+		memcpy(screen_buffer, _shm->screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
 
 		// Let's sleep the time Doom asks
 		usleep(this->_shm->sleep_ms * 1000);

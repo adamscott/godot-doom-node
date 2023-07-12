@@ -2,11 +2,16 @@
 #define GDDOOM_H
 
 #include <sys/types.h>
+#include <cstdint>
 
+#include "doomgeneric/doomgeneric.h"
 #include "godot_cpp/classes/control.hpp"
+#include "godot_cpp/classes/image_texture.hpp"
+#include "godot_cpp/classes/texture_rect.hpp"
 #include "godot_cpp/classes/thread.hpp"
 #include "godot_cpp/core/class_db.hpp"
 #include "godot_cpp/templates/vector.hpp"
+#include "godot_cpp/variant/packed_byte_array.hpp"
 
 extern "C" {
 #include "common.h"
@@ -15,8 +20,8 @@ extern "C" {
 
 namespace godot {
 
-class GDDoom : public Control {
-	GDCLASS(GDDoom, Control);
+class GDDoom : public TextureRect {
+	GDCLASS(GDDoom, TextureRect);
 
 private:
 	static int _last_id;
@@ -34,6 +39,11 @@ private:
 
 	bool enabled = false;
 	String wad_path;
+
+	// TextureRect *texture_rect;
+	Ref<ImageTexture> img_texture = nullptr;
+	unsigned char screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
+	PackedByteArray screen_buffer_array;
 
 	void _init_shm();
 	void _thread_func();

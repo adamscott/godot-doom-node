@@ -3,6 +3,7 @@
 #include <common.h>
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -121,8 +122,7 @@ void DG_Init() {
 }
 
 void DG_DrawFrame() {
-	printf("DG_DrawFrame()\n");
-	shm->screen_buffer = *DG_ScreenBuffer;
+	memcpy(shm->screen_buffer, DG_ScreenBuffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
 }
 
 void DG_SleepMs(uint32_t ms) {
