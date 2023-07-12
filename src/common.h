@@ -1,7 +1,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include <doomgeneric/doomgeneric.h>
@@ -15,9 +14,9 @@ typedef struct SharedMemory {
 	char window_title[255];
 	char keys_pressed[100];
 	uint32_t sleep_ms;
-	bool terminate;
-	bool ready;
-	bool init;
+	uint8_t terminate : 1;
+	uint8_t ready : 1;
+	uint8_t init : 1;
 } SharedMemory;
 
 #endif
