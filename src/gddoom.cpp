@@ -52,7 +52,8 @@ using namespace godot;
 
 void GDDoom::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_thread_func"), &GDDoom::_thread_func);
-	ClassDB::bind_method(D_METHOD("_thread_parse_wad"), &GDDoom::_thread_func);
+	ClassDB::bind_method(D_METHOD("_thread_parse_wad"), &GDDoom::_thread_parse_wad);
+	ClassDB::bind_method(D_METHOD("append_sounds"), &GDDoom::append_sounds);
 
 	ADD_GROUP("DOOM", "doom_");
 
@@ -110,12 +111,22 @@ void GDDoom::init_doom() {
 	_thread_wad.instantiate();
 	_thread.instantiate();
 
+	Node *sound_container = get_node<Node>("SoundContainer");
+	if (sound_container != nullptr) {
+		sound_container->set_name("tobedeleted");
+		sound_container->queue_free();
+	}
+	sound_container = memnew(Node);
+	add_child(sound_container);
+	sound_container->set_owner(get_tree()->get_edited_scene_root());
+	sound_container->set_name("SoundContainer");
+
 	Callable func = Callable(this, "_thread_func");
-	// Callable parse_wad = Callable(this, "_thread_parse_wad");
+	Callable parse_wad = Callable(this, "_thread_parse_wad");
 	UtilityFunctions::print("Calling _thread.start()");
-	_thread_parse_wad();
 	_thread->start(func);
-	// _thread_wad->start(parse_wad);
+	_thread_wad->start(parse_wad);
+	// _thread_parse_wad();
 }
 
 void GDDoom::launch_doom_executable() {
@@ -180,14 +191,12 @@ void GDDoom::_thread_parse_wad() {
 		wad->seek(file_entry.offset_data);
 		PackedByteArray file_array = wad->get_buffer(file_entry.length_data);
 
-		files[file_entry.name] = file_array;
+		Dictionary info;
+		info["data"] = file_array;
+
+		files[file_entry.name] = info;
 		UtilityFunctions::print(vformat("file %s, size: %x", file_entry.name, file_entry.length_data));
 	}
-
-	Node *sound_container = memnew(Node);
-	add_child(sound_container);
-	sound_container->set_owner(get_tree()->get_edited_scene_root());
-	sound_container->set_name("SoundContainer");
 
 	// Find sounds
 	Array keys = files.keys();
@@ -196,11 +205,15 @@ void GDDoom::_thread_parse_wad() {
 		if (!key.begins_with("DS")) {
 			continue;
 		}
-		PackedByteArray file_array = files[key];
+		Dictionary info = files[key];
+		PackedByteArray file_array = info["data"];
 
 		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
-		sound_container->add_child(player);
-		player->set_owner(get_tree()->get_edited_scene_root());
+
+		// Node *sound_container = get_node<Node>("SoundContainer");
+		// sound_container->add_child(player);
+
+		// player->set_owner(get_tree()->get_edited_scene_root());
 		player->set_name(key);
 
 		// https://doomwiki.org/wiki/Sound
@@ -218,6 +231,27 @@ void GDDoom::_thread_parse_wad() {
 		wav->set_data(samples);
 		wav->set_mix_rate(sample_rate);
 		player->set_stream(wav);
+
+		info["player"] = player;
+	}
+
+	call_deferred("append_sounds");
+}
+
+void GDDoom::append_sounds() {
+	Node *sound_container = get_node<Node>("SoundContainer");
+
+	// Find sounds
+	Array keys = files.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		String key = keys[i];
+		if (!key.begins_with("DS")) {
+			continue;
+		}
+		Dictionary info = files[key];
+		AudioStreamPlayer *player = reinterpret_cast<AudioStreamPlayer *>((Object *)info["player"]);
+		sound_container->add_child(player);
+		player->set_owner(get_tree()->get_edited_scene_root());
 	}
 }
 

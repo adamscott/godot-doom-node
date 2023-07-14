@@ -82,6 +82,7 @@ private:
 	void init_doom();
 	void kill_doom();
 	void launch_doom_executable();
+	void append_sounds();
 
 	void update_doom();
 
