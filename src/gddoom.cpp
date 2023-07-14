@@ -41,7 +41,14 @@ extern "C" {
 #include <sys/stat.h>
 
 // GDDoom
-#include <common.h>
+#include "common.h"
+
+// DOOM (mus2mid)
+#include "doomgeneric/memio.h"
+#include "doomgeneric/mus2mid.h"
+
+// Fluidsynth
+#include "fluidsynth.h"
 }
 
 using namespace godot;
@@ -217,10 +224,6 @@ void GDDoom::_thread_parse_wad() {
 
 		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
 
-		// Node *sound_container = get_node<Node>("SoundContainer");
-		// sound_container->add_child(player);
-
-		// player->set_owner(get_tree()->get_edited_scene_root());
 		player->set_name(key);
 
 		// https://doomwiki.org/wiki/Sound
@@ -240,6 +243,15 @@ void GDDoom::_thread_parse_wad() {
 		player->set_stream(wav);
 
 		info["player"] = player;
+	}
+
+	// Find music
+	Array keys = files.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		String key = keys[i];
+		if (!key.begins_with("D_")) {
+			continue;
+		}
 	}
 
 	call_deferred("append_sounds");
