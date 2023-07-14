@@ -1,9 +1,15 @@
 #include "common.h"
+#include "spawn.h"
 
 #include "doomgeneric/deh_str.h"
 #include "doomgeneric/i_sound.h"
 #include "doomgeneric/m_misc.h"
 #include "doomgeneric/w_wad.h"
+
+// Shared memory:
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 #define NUM_CHANNELS 16
 
