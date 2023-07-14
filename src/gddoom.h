@@ -66,6 +66,7 @@ private:
 	int _shm_fd;
 
 	Vector<String> _uuids;
+	Vector<SoundInstructions> sound_instructions;
 
 	bool enabled = false;
 	String wad_path;
@@ -83,6 +84,9 @@ private:
 	void kill_doom();
 	void launch_doom_executable();
 	void append_sounds();
+
+	void update_screen_buffer();
+	void update_sounds();
 
 	void update_doom();
 

@@ -1,15 +1,19 @@
+#include <string.h>
+
+// Shared memory:
+#include <fcntl.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+
 #include "common.h"
+#include "shm.h"
 #include "spawn.h"
 
 #include "doomgeneric/deh_str.h"
 #include "doomgeneric/i_sound.h"
 #include "doomgeneric/m_misc.h"
 #include "doomgeneric/w_wad.h"
-
-// Shared memory:
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 
 #define NUM_CHANNELS 16
 
@@ -49,42 +53,60 @@ static boolean CacheSFX(sfxinfo_t *sfxinfo) {
 }
 
 static void Godot_PrecacheSounds(sfxinfo_t *sounds, int num_sounds) {
-	char namebuf[9];
-	int i;
+	// char namebuf[9];
 
-	printf("Godot_PrecacheSounds: Precaching all sound effects..");
+	for (int i = 0; i < num_sounds; i++) {
+		sfxinfo_t *sound = &sounds[i];
+		// GetSfxLumpName(sound, namebuf, sizeof(namebuf));
 
-	for (i = 0; i < num_sounds; ++i) {
-		if ((i % 6) == 0) {
-			printf(".");
-			fflush(stdout);
-		}
+		SoundInstructions inst;
+		inst.type = SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND;
+		// strcpy(inst.name, namebuf);
+		strcpy(inst.name, sound->name);
+		inst.pitch = sound->pitch;
+		inst.volume = sound->volume;
+		inst.priority = sound->priority;
+		inst.usefulness = sound->usefulness;
 
-		GetSfxLumpName(&sounds[i], namebuf, sizeof(namebuf));
-
-		sounds[i].lumpnum = W_CheckNumForName(namebuf);
-
-		if (sounds[i].lumpnum != -1) {
-			CacheSFX(&sounds[i]);
-		}
+		shm->sound_instructions[shm->sound_instructions_length] = inst;
+		shm->sound_instructions_length++;
 	}
-
-	printf("\n");
 }
 
 static boolean Godot_SoundIsPlaying(int handle) {
-	return false;
+	return true;
 }
 
-static void Godot_StopSound(int handle) {}
+static void Godot_StopSound(int handle) {
+	printf("update sound %d\n", handle);
+}
 
 static int Godot_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep) {
-	return 0;
+	// char namebuf[9];
+	SoundInstructions inst;
+	inst.type = SOUND_INSTRUCTION_TYPE_START_SOUND;
+	// GetSfxLumpName(sfxinfo, namebuf, sizeof(namebuf));
+	strcpy(inst.name, sfxinfo->name);
+	inst.channel = channel;
+	inst.volume = vol;
+	inst.sep = sep;
+	inst.pitch = sfxinfo->pitch;
+
+	shm->sound_instructions[shm->sound_instructions_length] = inst;
+	shm->sound_instructions_length++;
+
+	channels_playing[channel] = sfxinfo;
+
+	return channel;
 }
 
-static void Godot_UpdateSoundParams(int handle, int vol, int sep) {}
+static void Godot_UpdateSoundParams(int handle, int vol, int sep) {
+	printf("update sound %d, vol: %d\n", handle, vol);
+}
 
-static void Godot_UpdateSound(void) {}
+static void Godot_UpdateSound(void) {
+	// printf("update sound\n");
+}
 
 static int Godot_GetSfxLumpNum(sfxinfo_t *sfx) {
 	char namebuf[9];
@@ -95,6 +117,7 @@ static int Godot_GetSfxLumpNum(sfxinfo_t *sfx) {
 }
 
 static void Godot_ShutdownSound(void) {
+	printf("shutdown sound");
 }
 
 static boolean Godot_InitSound(boolean _use_sfx_prefix) {

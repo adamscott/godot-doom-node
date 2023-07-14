@@ -10,6 +10,27 @@
 #define GDDOOM_SPAWN_SHM_NAME "/doom"
 #define GDDOOM_SPAWN_SHM_ID GDDOOM_SPAWN_SHM_NAME "000000"
 
+typedef enum SoundInstructionType {
+	SOUND_INSTRUCTION_TYPE_EMPTY,
+	SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND,
+	SOUND_INSTRUCTION_TYPE_START_SOUND,
+	SOUND_INSTRUCTION_TYPE_STOP_SOUND,
+	SOUND_INSTRUCTION_TYPE_UPDATE_SOUND_PARAMS,
+	SOUND_INSTRUCTION_TYPE_SHUTDOWN,
+	SOUND_INSTRUCTION_TYPE_MAX
+} SoundInstructionType;
+
+typedef struct SoundInstructions {
+	SoundInstructionType type;
+	char name[9];
+	int8_t channel;
+	int8_t volume;
+	int8_t sep;
+	int8_t pitch;
+	int8_t priority;
+	int8_t usefulness;
+} SoundInstructions;
+
 typedef struct SharedMemory {
 	uint64_t ticks_msec;
 	unsigned char *screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
@@ -19,11 +40,8 @@ typedef struct SharedMemory {
 	uint8_t terminate : 1;
 	uint8_t ready : 1;
 	uint8_t init : 1;
-	uint32_t sound_memory;
+	uint8_t sound_instructions_length;
+	SoundInstructions sound_instructions[UINT8_MAX];
 } SharedMemory;
-
-typedef struct SharedMemoryLumps {
-	lumpinfo_t lumps[UINT16_MAX];
-} SharedMemoryLumps;
 
 #endif /* COMMON_H */

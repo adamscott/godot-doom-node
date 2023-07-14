@@ -121,6 +121,13 @@ void GDDoom::init_doom() {
 	sound_container->set_owner(get_tree()->get_edited_scene_root());
 	sound_container->set_name("SoundContainer");
 
+	for (int i = 0; i < 16; i++) {
+		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
+		sound_container->add_child(player);
+		player->set_owner(get_tree()->get_edited_scene_root());
+		player->set_name(vformat("Channel%s", i));
+	}
+
 	Callable func = Callable(this, "_thread_func");
 	Callable parse_wad = Callable(this, "_thread_parse_wad");
 	UtilityFunctions::print("Calling _thread.start()");
@@ -284,6 +291,13 @@ void GDDoom::_process(double delta) {
 		return;
 	}
 
+	// UtilityFunctions::print(vformat("_spawn_pid: %s", _spawn_pid));
+
+	update_screen_buffer();
+	update_sounds();
+}
+
+void GDDoom::update_screen_buffer() {
 	screen_buffer_array.resize(sizeof(screen_buffer));
 	screen_buffer_array.clear();
 
@@ -301,6 +315,59 @@ void GDDoom::_process(double delta) {
 	} else {
 		img_texture->update(image);
 	}
+}
+
+void GDDoom::update_sounds() {
+	Node *sound_container = get_node<Node>("SoundContainer");
+	if (sound_container == nullptr) {
+		return;
+	}
+
+	for (SoundInstructions instructions : sound_instructions) {
+		switch (instructions.type) {
+			case SOUND_INSTRUCTION_TYPE_START_SOUND: {
+				String name = vformat("DS%s", String(instructions.name).to_upper());
+				AudioStreamPlayer *source = sound_container->get_node<AudioStreamPlayer>(name);
+				UtilityFunctions::print(vformat("trying to duplicate %s, %d", name, instructions.pitch));
+
+				if (source == nullptr) {
+					continue;
+				}
+
+				// AudioStreamPlayer *clone = (AudioStreamPlayer *)source->duplicate();
+				// clone->set_pitch_scale(instructions.pitch)
+				// clone->set_volume_db(
+				// 		UtilityFunctions::linear_to_db(
+				// 				UtilityFunctions::remap(instructions.volume, 0.0, 127.0, 0.0, 1.0)));
+				// clone->set_autoplay(true);
+				String channel_name = vformat("Channel%s", instructions.channel);
+				AudioStreamPlayer *squatting_sound = sound_container->get_node<AudioStreamPlayer>(channel_name);
+
+				if (squatting_sound != nullptr) {
+					squatting_sound->stop();
+					squatting_sound->set_stream(source->get_stream());
+					squatting_sound->set_pitch_scale(
+							UtilityFunctions::remap(instructions.pitch, -127, 127, 0, 2));
+					squatting_sound->set_volume_db(
+							UtilityFunctions::linear_to_db(
+									UtilityFunctions::remap(instructions.volume, 0.0, 127.0, 0.0, 2.0)));
+					squatting_sound->play();
+				}
+
+				// sound_container->add_child(clone);
+				// clone->set_owner(get_tree()->get_edited_scene_root());
+				// clone->set_name(channel_name);
+				// clone->play();
+			} break;
+
+			case SOUND_INSTRUCTION_TYPE_EMPTY:
+			case SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND:
+			default: {
+				continue;
+			}
+		}
+	}
+	sound_instructions.clear();
 }
 
 void GDDoom::_ready() {
@@ -357,7 +424,14 @@ void GDDoom::_thread_func() {
 			return;
 		}
 		// The shared memory is ready
+		// Screenbuffer
 		memcpy(screen_buffer, _shm->screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
+		// Sounds
+		for (int i = 0; i < _shm->sound_instructions_length; i++) {
+			SoundInstructions instructions = _shm->sound_instructions[i];
+			sound_instructions.append(instructions);
+		}
+		_shm->sound_instructions_length = 0;
 
 		// Let's sleep the time Doom asks
 		usleep(this->_shm->sleep_ms * 1000);
@@ -392,6 +466,7 @@ void GDDoom::_init_shm() {
 }
 
 GDDoom::GDDoom() {
+	_spawn_pid = 0;
 }
 
 GDDoom::~GDDoom() {
