@@ -3,3 +3,8 @@
 	url = git@github.com:godotengine/godot-cpp.git
 	branch = godot-4.1-stable
 	ignore = dirty
+[submodule "thirdparty/fluidsynth"]
+	path = thirdparty/fluidsynth
+	url = git@github.com:FluidSynth/fluidsynth.git
+	branch = v2.3.3
+	ignore = dirty
