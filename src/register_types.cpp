@@ -7,8 +7,8 @@
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 
-#include "gddoom.h"
-#include "gddoommus2mid.h"
+#include "doom.h"
+#include "doommus2mid.h"
 
 using namespace godot;
 
@@ -17,8 +17,8 @@ void initialize_gddoom_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 
-	ClassDB::register_class<GDDoom>();
-	ClassDB::register_class<GDDoomMus2Mid>();
+	ClassDB::register_class<DOOM>();
+	ClassDB::register_class<DOOMMus2Mid>();
 }
 
 void uninitialize_gddoom_module(ModuleInitializationLevel p_level) {

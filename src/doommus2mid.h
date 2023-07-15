@@ -12,11 +12,11 @@
 #define MUS_PERCUSSION_CHAN 15
 
 namespace godot {
-class GDDoomMus2Mid : public Object {
-	GDCLASS(GDDoomMus2Mid, Object);
+class DOOMMus2Mid : public Object {
+	GDCLASS(DOOMMus2Mid, Object);
 
 private:
-	static GDDoomMus2Mid *singleton;
+	static DOOMMus2Mid *singleton;
 
 	enum MusEvent {
 		MUS_RELEASEKEY = 0x00,
@@ -88,12 +88,12 @@ protected:
 	static void _bind_methods();
 
 public:
-	static GDDoomMus2Mid *get_singleton();
+	static DOOMMus2Mid *get_singleton();
 
 	bool mus2mid(PackedByteArray &p_mus_input, PackedByteArray &midi_output);
 
-	GDDoomMus2Mid();
-	~GDDoomMus2Mid();
+	DOOMMus2Mid();
+	~DOOMMus2Mid();
 };
 
 } //namespace godot

@@ -22,8 +22,8 @@ extern "C" {
 
 namespace godot {
 
-class GDDoom : public TextureRect {
-	GDCLASS(GDDoom, TextureRect);
+class DOOM : public TextureRect {
+	GDCLASS(DOOM, TextureRect);
 
 private:
 	struct WadOriginalSignature {
@@ -118,8 +118,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	GDDoom();
-	~GDDoom();
+	DOOM();
+	~DOOM();
 
 	bool get_enabled();
 	void set_enabled(bool p_enabled);

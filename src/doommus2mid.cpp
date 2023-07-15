@@ -18,7 +18,7 @@
 // mus2mid.cpp - Adam Scott 2023 - https://adamscott.studio
 // Use Godot 4 PackedByteArray instead of DOOM memory system.
 
-#include "gddoommus2mid.h"
+#include "doommus2mid.h"
 
 #include "godot_cpp/classes/file_access.hpp"
 #include "godot_cpp/core/class_db.hpp"
@@ -35,10 +35,10 @@
 
 using namespace godot;
 
-void GDDoomMus2Mid::_bind_methods() {
+void DOOMMus2Mid::_bind_methods() {
 }
 
-bool GDDoomMus2Mid::write_time(uint32_t p_time, PackedByteArray &p_midi_output) {
+bool DOOMMus2Mid::write_time(uint32_t p_time, PackedByteArray &p_midi_output) {
 	uint32_t buffer = p_time & 0x7F;
 	uint8_t write_val;
 
@@ -64,7 +64,7 @@ bool GDDoomMus2Mid::write_time(uint32_t p_time, PackedByteArray &p_midi_output) 
 	}
 }
 
-bool GDDoomMus2Mid::write_end_track(PackedByteArray &p_midi_output) {
+bool DOOMMus2Mid::write_end_track(PackedByteArray &p_midi_output) {
 	uint8_t end_track[] = { 0xFF, 0x2F, 0x00 };
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -79,7 +79,7 @@ bool GDDoomMus2Mid::write_end_track(PackedByteArray &p_midi_output) {
 	return false;
 }
 
-bool GDDoomMus2Mid::write_press_key(uint8_t p_channel, uint8_t p_key, uint8_t p_velocity, PackedByteArray &p_midi_output) {
+bool DOOMMus2Mid::write_press_key(uint8_t p_channel, uint8_t p_key, uint8_t p_velocity, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_PRESSKEY | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -105,7 +105,7 @@ bool GDDoomMus2Mid::write_press_key(uint8_t p_channel, uint8_t p_key, uint8_t p_
 	return false;
 }
 
-bool GDDoomMus2Mid::write_release_key(uint8_t p_channel, uint8_t p_key, PackedByteArray &p_midi_output) {
+bool DOOMMus2Mid::write_release_key(uint8_t p_channel, uint8_t p_key, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_RELEASEKEY | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -131,7 +131,7 @@ bool GDDoomMus2Mid::write_release_key(uint8_t p_channel, uint8_t p_key, PackedBy
 	return false;
 }
 
-bool GDDoomMus2Mid::write_pitch_wheel(uint8_t p_channel, uint16_t p_wheel, PackedByteArray &p_midi_output) {
+bool DOOMMus2Mid::write_pitch_wheel(uint8_t p_channel, uint16_t p_wheel, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_PITCHWHEEL | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -157,7 +157,7 @@ bool GDDoomMus2Mid::write_pitch_wheel(uint8_t p_channel, uint16_t p_wheel, Packe
 	return false;
 }
 
-bool GDDoomMus2Mid::write_change_patch(uint8_t p_channel, uint8_t p_patch, PackedByteArray &p_midi_output) {
+bool DOOMMus2Mid::write_change_patch(uint8_t p_channel, uint8_t p_patch, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_CHANGEPATCH | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -178,7 +178,7 @@ bool GDDoomMus2Mid::write_change_patch(uint8_t p_channel, uint8_t p_patch, Packe
 	return false;
 }
 
-bool GDDoomMus2Mid::write_change_controller_valued(uint8_t p_channel, uint8_t p_control, uint8_t p_value, PackedByteArray &p_midi_output) {
+bool DOOMMus2Mid::write_change_controller_valued(uint8_t p_channel, uint8_t p_control, uint8_t p_value, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_CHANGECONTROLLER | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -215,11 +215,11 @@ bool GDDoomMus2Mid::write_change_controller_valued(uint8_t p_channel, uint8_t p_
 	return false;
 }
 
-bool GDDoomMus2Mid::write_change_controller_valueless(uint8_t p_channel, uint8_t p_control, PackedByteArray &p_midi_output) {
+bool DOOMMus2Mid::write_change_controller_valueless(uint8_t p_channel, uint8_t p_control, PackedByteArray &p_midi_output) {
 	return write_change_controller_valued(p_channel, p_control, 0, p_midi_output);
 }
 
-int32_t GDDoomMus2Mid::allocate_midi_channel() {
+int32_t DOOMMus2Mid::allocate_midi_channel() {
 	int32_t result;
 	int32_t max;
 	int32_t i;
@@ -241,7 +241,7 @@ int32_t GDDoomMus2Mid::allocate_midi_channel() {
 	return result;
 }
 
-int32_t GDDoomMus2Mid::get_midi_channel(int8_t p_mus_channel, PackedByteArray &p_midi_output) {
+int32_t DOOMMus2Mid::get_midi_channel(int8_t p_mus_channel, PackedByteArray &p_midi_output) {
 	if (p_mus_channel == MUS_PERCUSSION_CHAN) {
 		return MIDI_PERCUSSION_CHAN;
 	}
@@ -254,8 +254,8 @@ int32_t GDDoomMus2Mid::get_midi_channel(int8_t p_mus_channel, PackedByteArray &p
 	return channel_map[p_mus_channel];
 }
 
-bool GDDoomMus2Mid::read_mus_header(PackedByteArray &p_file, GDDoomMus2Mid::MusHeader *header) {
-	if (p_file.size() < sizeof(GDDoomMus2Mid::MusHeader)) {
+bool DOOMMus2Mid::read_mus_header(PackedByteArray &p_file, DOOMMus2Mid::MusHeader *header) {
+	if (p_file.size() < sizeof(DOOMMus2Mid::MusHeader)) {
 		return false;
 	}
 
@@ -270,7 +270,7 @@ bool GDDoomMus2Mid::read_mus_header(PackedByteArray &p_file, GDDoomMus2Mid::MusH
 	return true;
 }
 
-bool GDDoomMus2Mid::mus2mid(PackedByteArray &p_mus_input, PackedByteArray &p_midi_output) {
+bool DOOMMus2Mid::mus2mid(PackedByteArray &p_mus_input, PackedByteArray &p_midi_output) {
 	uint32_t seek = 0;
 
 	MusHeader mus_file_header;
@@ -472,20 +472,20 @@ bool GDDoomMus2Mid::mus2mid(PackedByteArray &p_mus_input, PackedByteArray &p_mid
 	return false;
 }
 
-GDDoomMus2Mid *GDDoomMus2Mid::get_singleton() {
+DOOMMus2Mid *DOOMMus2Mid::get_singleton() {
 	if (singleton == nullptr) {
-		memnew(GDDoomMus2Mid);
+		memnew(DOOMMus2Mid);
 	}
 
 	return singleton;
 }
 
-GDDoomMus2Mid::GDDoomMus2Mid() {
+DOOMMus2Mid::DOOMMus2Mid() {
 	singleton = this;
 }
 
-GDDoomMus2Mid::~GDDoomMus2Mid() {
+DOOMMus2Mid::~DOOMMus2Mid() {
 	singleton = nullptr;
 }
 
-GDDoomMus2Mid *GDDoomMus2Mid::singleton = nullptr;
+DOOMMus2Mid *DOOMMus2Mid::singleton = nullptr;

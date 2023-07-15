@@ -1,3 +1,5 @@
+#include "doom.h"
+
 #include <signal.h>
 #include <cstdint>
 #include <cstring>
@@ -30,8 +32,7 @@
 #include "doomgeneric/doomgeneric.h"
 #include "doomgeneric/doomtype.h"
 
-#include "gddoom.h"
-#include "gddoommus2mid.h"
+#include "doommus2mid.h"
 #include "swap.h"
 
 extern "C" {
@@ -58,52 +59,52 @@ extern "C" {
 
 using namespace godot;
 
-void GDDoom::_bind_methods() {
+void DOOM::_bind_methods() {
 	// Signals.
 	ADD_SIGNAL(MethodInfo("assets_imported"));
 
-	ClassDB::bind_method(D_METHOD("doom_thread_func"), &GDDoom::doom_thread_func);
-	ClassDB::bind_method(D_METHOD("wad_thread_func"), &GDDoom::wad_thread_func);
-	ClassDB::bind_method(D_METHOD("sound_fetching_thread_func"), &GDDoom::sound_fetching_thread_func);
-	ClassDB::bind_method(D_METHOD("midi_fetching_thread_func"), &GDDoom::midi_fetching_thread_func);
-	ClassDB::bind_method(D_METHOD("append_sounds"), &GDDoom::append_sounds);
-	ClassDB::bind_method(D_METHOD("wad_thread_end"), &GDDoom::wad_thread_end);
-	ClassDB::bind_method(D_METHOD("sound_fetching_thread_end"), &GDDoom::sound_fetching_thread_end);
-	ClassDB::bind_method(D_METHOD("midi_fetching_thread_end"), &GDDoom::midi_fetching_thread_end);
+	ClassDB::bind_method(D_METHOD("doom_thread_func"), &DOOM::doom_thread_func);
+	ClassDB::bind_method(D_METHOD("wad_thread_func"), &DOOM::wad_thread_func);
+	ClassDB::bind_method(D_METHOD("sound_fetching_thread_func"), &DOOM::sound_fetching_thread_func);
+	ClassDB::bind_method(D_METHOD("midi_fetching_thread_func"), &DOOM::midi_fetching_thread_func);
+	ClassDB::bind_method(D_METHOD("append_sounds"), &DOOM::append_sounds);
+	ClassDB::bind_method(D_METHOD("wad_thread_end"), &DOOM::wad_thread_end);
+	ClassDB::bind_method(D_METHOD("sound_fetching_thread_end"), &DOOM::sound_fetching_thread_end);
+	ClassDB::bind_method(D_METHOD("midi_fetching_thread_end"), &DOOM::midi_fetching_thread_end);
 
 	ADD_GROUP("DOOM", "doom_");
 	ADD_GROUP("Assets", "assets_");
 
-	ClassDB::bind_method(D_METHOD("get_enabled"), &GDDoom::get_enabled);
-	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &GDDoom::set_enabled);
+	ClassDB::bind_method(D_METHOD("get_enabled"), &DOOM::get_enabled);
+	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &DOOM::set_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "doom_enabled"), "set_enabled", "get_enabled");
 
-	ClassDB::bind_method(D_METHOD("get_import_assets"), &GDDoom::get_import_assets);
-	ClassDB::bind_method(D_METHOD("set_import_assets", "import"), &GDDoom::set_import_assets);
+	ClassDB::bind_method(D_METHOD("get_import_assets"), &DOOM::get_import_assets);
+	ClassDB::bind_method(D_METHOD("set_import_assets", "import"), &DOOM::set_import_assets);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "assets_import_assets"), "set_import_assets", "get_import_assets");
 
-	ClassDB::bind_method(D_METHOD("get_wad_path"), &GDDoom::get_wad_path);
-	ClassDB::bind_method(D_METHOD("set_wad_path", "wad_path"), &GDDoom::set_wad_path);
+	ClassDB::bind_method(D_METHOD("get_wad_path"), &DOOM::get_wad_path);
+	ClassDB::bind_method(D_METHOD("set_wad_path", "wad_path"), &DOOM::set_wad_path);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "assets_wad_path", PROPERTY_HINT_FILE, "*.wad"), "set_wad_path", "get_wad_path");
 
-	ClassDB::bind_method(D_METHOD("get_soundfont_path"), &GDDoom::get_soundfont_path);
-	ClassDB::bind_method(D_METHOD("set_soundfont_path", "soundfont_path"), &GDDoom::set_soundfont_path);
+	ClassDB::bind_method(D_METHOD("get_soundfont_path"), &DOOM::get_soundfont_path);
+	ClassDB::bind_method(D_METHOD("set_soundfont_path", "soundfont_path"), &DOOM::set_soundfont_path);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "assets_soundfont_path", PROPERTY_HINT_FILE, "*.sf2,*.sf3"), "set_soundfont_path", "get_soundfont_path");
 }
 
-bool GDDoom::get_import_assets() {
+bool DOOM::get_import_assets() {
 	return false;
 }
 
-void GDDoom::set_import_assets(bool p_import_assets) {
+void DOOM::set_import_assets(bool p_import_assets) {
 	import_assets();
 }
 
-bool GDDoom::get_enabled() {
+bool DOOM::get_enabled() {
 	return enabled;
 }
 
-void GDDoom::set_enabled(bool p_enabled) {
+void DOOM::set_enabled(bool p_enabled) {
 	enabled = p_enabled;
 
 	if (p_enabled) {
@@ -113,23 +114,23 @@ void GDDoom::set_enabled(bool p_enabled) {
 	}
 }
 
-String GDDoom::get_wad_path() {
+String DOOM::get_wad_path() {
 	return wad_path;
 }
 
-void GDDoom::set_wad_path(String p_wad_path) {
+void DOOM::set_wad_path(String p_wad_path) {
 	wad_path = p_wad_path;
 }
 
-String GDDoom::get_soundfont_path() {
+String DOOM::get_soundfont_path() {
 	return soundfont_path;
 }
 
-void GDDoom::set_soundfont_path(String p_soundfont_path) {
+void DOOM::set_soundfont_path(String p_soundfont_path) {
 	soundfont_path = p_soundfont_path;
 }
 
-void GDDoom::import_assets() {
+void DOOM::import_assets() {
 	if (wad_path.is_empty()) {
 		UtilityFunctions::printerr(vformat("[GDDoom] Wad path must not be empty."));
 		return;
@@ -149,7 +150,7 @@ void GDDoom::import_assets() {
 	wad_thread->start(wad_func);
 }
 
-void GDDoom::update_doom() {
+void DOOM::update_doom() {
 	if (enabled && assets_ready) {
 		init_doom();
 	} else if (spawn_pid > 0) {
@@ -157,7 +158,7 @@ void GDDoom::update_doom() {
 	}
 }
 
-void GDDoom::init_doom() {
+void DOOM::init_doom() {
 	exiting = false;
 
 	UtilityFunctions::print("init_doom!");
@@ -194,7 +195,7 @@ void GDDoom::init_doom() {
 	doom_thread->start(doom_func);
 }
 
-void GDDoom::launch_doom_executable() {
+void DOOM::launch_doom_executable() {
 	const char *path = ProjectSettings::get_singleton()->globalize_path("res://bin/gddoom-spawn.linux.template_debug.x86_64").utf8().get_data();
 	const char *id = vformat("%s", shm_id).utf8().get_data();
 	const char *doom1_wad = vformat("%s", ProjectSettings::get_singleton()->globalize_path(wad_path)).utf8().get_data();
@@ -216,7 +217,7 @@ void GDDoom::launch_doom_executable() {
 	execve(args[0], args, envp);
 }
 
-void GDDoom::wad_thread_func() {
+void DOOM::wad_thread_func() {
 	UtilityFunctions::print(vformat("wad_thread called"));
 
 	files.clear();
@@ -273,7 +274,7 @@ void GDDoom::wad_thread_func() {
 	call_deferred("wad_thread_end");
 }
 
-void GDDoom::sound_fetching_thread_func() {
+void DOOM::sound_fetching_thread_func() {
 	Array keys = files.keys();
 	for (int i = 0; i < keys.size(); i++) {
 		String key = keys[i];
@@ -308,7 +309,7 @@ void GDDoom::sound_fetching_thread_func() {
 	call_deferred("sound_fetching_thread_end");
 }
 
-void GDDoom::midi_fetching_thread_func() {
+void DOOM::midi_fetching_thread_func() {
 	if (!FileAccess::file_exists(soundfont_path)) {
 		return;
 	}
@@ -356,7 +357,7 @@ void GDDoom::midi_fetching_thread_func() {
 		String ogg_file_path_globalized = ProjectSettings::get_singleton()->globalize_path(ogg_file_path);
 		char *ogg_file_path_globalized_char = strdup(ogg_file_path_globalized.utf8().get_data());
 
-		bool converted = !GDDoomMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
+		bool converted = !DOOMMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
 		if (!converted) {
 			continue;
 		}
@@ -403,7 +404,7 @@ void GDDoom::midi_fetching_thread_func() {
 	call_deferred("midi_fetching_thread_end");
 }
 
-void GDDoom::append_sounds() {
+void DOOM::append_sounds() {
 	Node *sound_container = get_node<Node>("SoundContainer");
 
 	// Find sounds
@@ -420,7 +421,7 @@ void GDDoom::append_sounds() {
 	}
 }
 
-void GDDoom::wad_thread_end() {
+void DOOM::wad_thread_end() {
 	if (wad_thread->is_alive()) {
 		wad_thread->wait_to_finish();
 	}
@@ -429,7 +430,7 @@ void GDDoom::wad_thread_end() {
 	start_midi_fetching();
 }
 
-void GDDoom::sound_fetching_thread_end() {
+void DOOM::sound_fetching_thread_end() {
 	if (sound_fetching_thread->is_alive()) {
 		sound_fetching_thread->wait_to_finish();
 	}
@@ -437,7 +438,7 @@ void GDDoom::sound_fetching_thread_end() {
 	sound_fetch_complete = true;
 }
 
-void GDDoom::midi_fetching_thread_end() {
+void DOOM::midi_fetching_thread_end() {
 	if (sound_fetching_thread->is_alive()) {
 		sound_fetching_thread->wait_to_finish();
 	}
@@ -445,25 +446,25 @@ void GDDoom::midi_fetching_thread_end() {
 	midi_fetch_complete = true;
 }
 
-void GDDoom::start_sound_fetching() {
+void DOOM::start_sound_fetching() {
 	sound_fetching_thread.instantiate();
 	Callable func = Callable(this, "sound_fetching_thread_func");
 	sound_fetching_thread->start(func);
 }
 
-void GDDoom::start_midi_fetching() {
+void DOOM::start_midi_fetching() {
 	midi_fetching_thread.instantiate();
 	Callable func = Callable(this, "midi_fetching_thread_func");
 	midi_fetching_thread->start(func);
 }
 
-void GDDoom::update_assets_status() {
+void DOOM::update_assets_status() {
 	if (sound_fetch_complete && midi_fetch_complete) {
 		emit_signal("assets_imported");
 	}
 }
 
-void GDDoom::kill_doom() {
+void DOOM::kill_doom() {
 	// UtilityFunctions::print("kill_doom()");
 	exiting = true;
 	if (!doom_thread.is_null()) {
@@ -487,7 +488,7 @@ void GDDoom::kill_doom() {
 	// UtilityFunctions::print("ending kill doom!");
 }
 
-void GDDoom::_process(double delta) {
+void DOOM::_process(double delta) {
 	if (spawn_pid == 0) {
 		return;
 	}
@@ -498,7 +499,7 @@ void GDDoom::_process(double delta) {
 	update_sounds();
 }
 
-void GDDoom::update_screen_buffer() {
+void DOOM::update_screen_buffer() {
 	screen_buffer_array.resize(sizeof(screen_buffer));
 	screen_buffer_array.clear();
 
@@ -518,7 +519,7 @@ void GDDoom::update_screen_buffer() {
 	}
 }
 
-void GDDoom::update_sounds() {
+void DOOM::update_sounds() {
 	Node *sound_container = get_node<Node>("SoundContainer");
 	if (sound_container == nullptr) {
 		return;
@@ -571,16 +572,16 @@ void GDDoom::update_sounds() {
 	sound_instructions.clear();
 }
 
-void GDDoom::_ready() {
+void DOOM::_ready() {
 	img_texture.instantiate();
 	set_texture(img_texture);
 }
 
-void GDDoom::_enter_tree() {
+void DOOM::_enter_tree() {
 	// UtilityFunctions::print("_enter_tree()");
 }
 
-void GDDoom::_exit_tree() {
+void DOOM::_exit_tree() {
 	if (enabled) {
 		kill_doom();
 	}
@@ -588,7 +589,7 @@ void GDDoom::_exit_tree() {
 	// texture_rect->queue_free();
 }
 
-void GDDoom::doom_thread_func() {
+void DOOM::doom_thread_func() {
 	// UtilityFunctions::print("doom_thread START!");
 
 	while (true) {
@@ -642,7 +643,7 @@ void GDDoom::doom_thread_func() {
 	}
 }
 
-void GDDoom::init_shm() {
+void DOOM::init_shm() {
 	id = last_id;
 	last_id += 1;
 
@@ -666,11 +667,11 @@ void GDDoom::init_shm() {
 	}
 }
 
-GDDoom::GDDoom() {
+DOOM::DOOM() {
 	spawn_pid = 0;
 }
 
-GDDoom::~GDDoom() {
+DOOM::~DOOM() {
 }
 
-int GDDoom::last_id = 0;
+int DOOM::last_id = 0;
