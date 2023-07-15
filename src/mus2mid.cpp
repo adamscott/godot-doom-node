@@ -20,6 +20,7 @@
 
 #include "mus2mid.h"
 
+#include "godot_cpp/classes/file_access.hpp"
 #include "godot_cpp/core/class_db.hpp"
 #include "godot_cpp/variant/packed_byte_array.hpp"
 #include "godot_cpp/variant/utility_functions.hpp"
@@ -270,6 +271,8 @@ bool GDDoomMus2Mid::read_mus_header(PackedByteArray p_file, GDDoomMus2Mid::MusHe
 }
 
 bool GDDoomMus2Mid::mus2mid(PackedByteArray p_mus_input, PackedByteArray p_midi_output) {
+	uint32_t seek = 0;
+
 	MusHeader mus_file_header;
 
 	uint8_t event_descriptor;
@@ -300,24 +303,169 @@ bool GDDoomMus2Mid::mus2mid(PackedByteArray p_mus_input, PackedByteArray p_midi_
 		return true;
 	}
 
+	seek = mus_file_header.score_start;
+
 	if (p_mus_input.size() < mus_file_header.score_start) {
 		return true;
 	}
 
-	void *mus_file_header_void = &mus_file_header;
-	for (int i = 0; i < sizeof(mus_file_header); i++) {
-		uint8_t buffer;
-		memcpy(&buffer, mus_file_header_void, sizeof(uint8_t));
-		p_midi_output.append(buffer);
+	// Write mus_file_header to the output
+	uint8_t buffer[sizeof(MusHeader)];
+	memcpy(&buffer, &mus_file_header, sizeof(MusHeader));
+	for (int i = 0; i < sizeof(MusHeader); i++) {
+		p_midi_output.append(buffer[i]);
 	}
+
 	track_size = 0;
 
-	UtilityFunctions::print(vformat("%s", p_midi_output.get_string_from_utf8()));
+	while (!hit_score_end) {
+		while (!hit_score_end) {
+			if (p_mus_input.size() < seek + sizeof(event_descriptor)) {
+				return true;
+			}
+			event_descriptor = p_mus_input.decode_u8(seek);
+			seek += sizeof(event_descriptor);
 
-	// while (!hit_score_end) {
-	// 	while (!hit_score_end) {
-	// 	}
-	// }
+			channel = get_midi_channel(event_descriptor & 0x0F, p_midi_output);
+			event = (MusEvent)(event_descriptor & 0x70);
+
+			switch (event) {
+				case MusEvent::MUS_RELEASEKEY: {
+					if (p_mus_input.size() < seek + sizeof(key)) {
+						return true;
+					}
+					key = p_mus_input.decode_u8(seek);
+					seek += sizeof(key);
+
+					if (write_release_key(channel, key, p_midi_output)) {
+						return true;
+					}
+				} break;
+
+				case MusEvent::MUS_PRESSKEY: {
+					if (p_mus_input.size() < seek + sizeof(key)) {
+						return true;
+					}
+					key = p_mus_input.decode_u8(seek);
+					seek += sizeof(key);
+
+					if (key & 0x80) {
+						if (p_mus_input.size() < seek + sizeof(channel_velocities[channel])) {
+							return true;
+						}
+						channel_velocities[channel] = p_mus_input.decode_u8(seek);
+						seek += sizeof(channel_velocities[channel]);
+
+						channel_velocities[channel] &= 0x7F;
+					}
+
+					if (write_press_key(channel, key, channel_velocities[channel], p_midi_output)) {
+						return true;
+					}
+				} break;
+
+				case MusEvent::MUS_PITCHWHEEL: {
+					if (p_mus_input.size() < seek + sizeof(key)) {
+						return true;
+					}
+					key = p_mus_input.decode_u8(seek);
+					seek += sizeof(key);
+
+					if (write_pitch_wheel(channel, key * 64, p_midi_output)) {
+						return true;
+					}
+				} break;
+
+				case MusEvent::MUS_SYSTEMEVENT: {
+					if (p_mus_input.size() < seek + sizeof(controller_number)) {
+						return true;
+					}
+					controller_number = p_mus_input.decode_u8(seek);
+					seek += sizeof(controller_number);
+
+					if (controller_number < 10 || controller_number > 14) {
+						return true;
+					}
+
+					if (write_change_controller_valueless(channel, controller_map[controller_number], p_midi_output)) {
+						return true;
+					}
+				} break;
+
+				case MusEvent::MUS_CHANGECONTROLLER: {
+					if (p_mus_input.size() < seek + sizeof(controller_number)) {
+						return true;
+					}
+					controller_number = p_mus_input.decode_u8(seek);
+					seek += sizeof(controller_number);
+
+					if (p_mus_input.size() < seek + sizeof(controller_value)) {
+						return true;
+					}
+					controller_value = p_mus_input.decode_u8(seek);
+					seek += sizeof(controller_value);
+
+					if (controller_number == 0) {
+						if (write_change_patch(channel, controller_value, p_midi_output)) {
+							return true;
+						}
+					} else {
+						if (controller_number < 1 || controller_number > 9) {
+							return true;
+						}
+
+						if (write_change_controller_valued(channel, controller_map[controller_number], controller_value, p_midi_output)) {
+							return true;
+						}
+					}
+				} break;
+
+				case MusEvent::MUS_SCOREEND: {
+					hit_score_end = true;
+				} break;
+
+				default: {
+					return true;
+				}
+			}
+
+			if (event_descriptor & 0x80) {
+				break;
+			}
+		}
+
+		if (!hit_score_end) {
+			time_delay = 0;
+			while (true) {
+				if (p_mus_input.size() < seek + sizeof(working)) {
+					return true;
+				}
+				working = p_mus_input.decode_u8(seek);
+				seek += sizeof(working);
+
+				time_delay = time_delay * 128 + (working & 0x7F);
+				if ((working & 0x80) == 0) {
+					break;
+				}
+			}
+			queued_time += time_delay;
+		}
+	}
+
+	// End of track
+	if (write_end_track(p_midi_output)) {
+		return true;
+	}
+
+	track_size_buffer[0] = (track_size >> 24) & 0xFF;
+	track_size_buffer[1] = (track_size >> 16) & 0xFF;
+	track_size_buffer[2] = (track_size >> 8) & 0xFF;
+	track_size_buffer[3] = track_size & 0xFF;
+
+	p_midi_output.set(18, track_size_buffer[0]);
+	p_midi_output.set(19, track_size_buffer[1]);
+	p_midi_output.set(20, track_size_buffer[2]);
+	p_midi_output.set(21, track_size_buffer[3]);
 
 	return false;
 }

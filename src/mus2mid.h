@@ -57,7 +57,7 @@ private:
 		0x00, 0x00, 0x00, 0x00 // Placeholder for track length
 	};
 
-	static constexpr uint8_t channel_velocities[] = {
+	uint8_t channel_velocities[NUM_CHANNELS] = {
 		127, 127, 127, 127, 127, 127, 127, 127,
 		127, 127, 127, 127, 127, 127, 127, 127
 	};
@@ -65,7 +65,7 @@ private:
 	uint8_t queued_time;
 	uint8_t track_size;
 
-	static constexpr uint8_t controller_map[] = {
+	uint8_t controller_map[15] = {
 		0x00, 0x20, 0x01, 0x07, 0x0A, 0x0B, 0x5B, 0x5D,
 		0x40, 0x43, 0x78, 0x7B, 0x7E, 0x7F, 0x79
 	};
