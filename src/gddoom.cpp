@@ -2,8 +2,6 @@
 #include <cstdint>
 #include <cstring>
 
-#include "doomgeneric/doomgeneric.h"
-#include "doomgeneric/doomtype.h"
 #include "godot_cpp/classes/audio_stream_player.hpp"
 #include "godot_cpp/classes/audio_stream_wav.hpp"
 #include "godot_cpp/classes/control.hpp"
@@ -27,7 +25,11 @@
 #include "godot_cpp/variant/utility_functions.hpp"
 #include "godot_cpp/variant/variant.hpp"
 
+#include "doomgeneric/doomgeneric.h"
+#include "doomgeneric/doomtype.h"
+
 #include "gddoom.h"
+#include "mus2mid.h"
 #include "swap.h"
 
 extern "C" {
@@ -42,10 +44,6 @@ extern "C" {
 
 // GDDoom
 #include "common.h"
-
-// DOOM (mus2mid)
-#include "doomgeneric/memio.h"
-#include "doomgeneric/mus2mid.h"
 
 // Fluidsynth
 #include "fluidsynth.h"
@@ -209,7 +207,7 @@ void GDDoom::_thread_parse_wad() {
 		info["data"] = file_array;
 
 		files[file_entry.name] = info;
-		UtilityFunctions::print(vformat("file %s, size: %x", file_entry.name, file_entry.length_data));
+		// UtilityFunctions::print(vformat("file %s, size: %x", file_entry.name, file_entry.length_data));
 	}
 
 	// Find sounds
@@ -246,12 +244,17 @@ void GDDoom::_thread_parse_wad() {
 	}
 
 	// Find music
-	Array keys = files.keys();
 	for (int i = 0; i < keys.size(); i++) {
 		String key = keys[i];
 		if (!key.begins_with("D_")) {
 			continue;
 		}
+
+		Dictionary info = files[key];
+		PackedByteArray file_array = info["data"];
+		PackedByteArray midi_output;
+
+		GDDoomMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
 	}
 
 	call_deferred("append_sounds");

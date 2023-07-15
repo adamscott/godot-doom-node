@@ -48,10 +48,6 @@ env.Append(CPPPATH=[os.path.abspath("src/"), os.path.abspath("thirdparty/doomgen
 env.Append(CPPDEFINES=["FEATURE_SOUND_GODOT"])
 
 sources = Glob("src/*.cpp")
-doomgeneric_mus2mid_file = Glob("thirdparty/doomgeneric/doomgeneric/mus2mid.c")
-doomgeneric_memio_file = Glob("thirdparty/doomgeneric/doomgeneric/memio.c")
-sources += doomgeneric_mus2mid_file + doomgeneric_memio_file
-
 spawn_sources = Glob("src/*.c")
 doomgeneric_files = Glob("thirdparty/doomgeneric/doomgeneric/*.c", exclude=[
     "thirdparty/doomgeneric/doomgeneric/doomgeneric_emscripten.c",

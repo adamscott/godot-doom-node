@@ -1,11 +1,14 @@
 #include "register_types.h"
 
-#include "gddoom.h"
-
 #include <gdextension_interface.h>
+
+#include "godot_cpp/core/memory.hpp"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
+
+#include "gddoom.h"
+#include "mus2mid.h"
 
 using namespace godot;
 
@@ -15,6 +18,7 @@ void initialize_gddoom_module(ModuleInitializationLevel p_level) {
 	}
 
 	ClassDB::register_class<GDDoom>();
+	ClassDB::register_class<GDDoomMus2Mid>();
 }
 
 void uninitialize_gddoom_module(ModuleInitializationLevel p_level) {

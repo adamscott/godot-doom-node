@@ -9,6 +9,7 @@
 #include "godot_cpp/classes/image_texture.hpp"
 #include "godot_cpp/classes/texture_rect.hpp"
 #include "godot_cpp/classes/thread.hpp"
+#include "godot_cpp/classes/wrapped.hpp"
 #include "godot_cpp/core/class_db.hpp"
 #include "godot_cpp/templates/vector.hpp"
 #include "godot_cpp/variant/dictionary.hpp"
