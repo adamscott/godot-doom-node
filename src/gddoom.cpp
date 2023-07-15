@@ -8,6 +8,7 @@
 #include "godot_cpp/classes/dir_access.hpp"
 #include "godot_cpp/classes/file_access.hpp"
 #include "godot_cpp/classes/global_constants.hpp"
+#include "godot_cpp/classes/hashing_context.hpp"
 #include "godot_cpp/classes/image_texture.hpp"
 #include "godot_cpp/classes/node.hpp"
 #include "godot_cpp/classes/os.hpp"
@@ -48,6 +49,11 @@ extern "C" {
 
 // Fluidsynth
 #include "fluidsynth.h"
+#include "fluidsynth/audio.h"
+#include "fluidsynth/midi.h"
+#include "fluidsynth/settings.h"
+#include "fluidsynth/synth.h"
+#include "fluidsynth/types.h"
 }
 
 using namespace godot;
@@ -57,6 +63,9 @@ using namespace godot;
 // ======
 
 void GDDoom::_bind_methods() {
+	// Signals.
+	ADD_SIGNAL(MethodInfo("assets_imported"));
+
 	ClassDB::bind_method(D_METHOD("_thread_func"), &GDDoom::_thread_func);
 	ClassDB::bind_method(D_METHOD("_thread_parse_wad"), &GDDoom::_thread_parse_wad);
 	ClassDB::bind_method(D_METHOD("append_sounds"), &GDDoom::append_sounds);
@@ -67,9 +76,25 @@ void GDDoom::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &GDDoom::set_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "doom_enabled"), "set_enabled", "get_enabled");
 
+	ClassDB::bind_method(D_METHOD("get_import_assets"), &GDDoom::get_import_assets);
+	ClassDB::bind_method(D_METHOD("set_import_assets", "import"), &GDDoom::set_import_assets);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "import_assets"), "set_import_assets", "get_import_assets");
+
 	ClassDB::bind_method(D_METHOD("get_wad_path"), &GDDoom::get_wad_path);
 	ClassDB::bind_method(D_METHOD("set_wad_path", "wad_path"), &GDDoom::set_wad_path);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "doom_wad_path", PROPERTY_HINT_FILE, "*.wad"), "set_wad_path", "get_wad_path");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "wad_path", PROPERTY_HINT_FILE, "*.wad"), "set_wad_path", "get_wad_path");
+
+	ClassDB::bind_method(D_METHOD("get_soundfont_path"), &GDDoom::get_soundfont_path);
+	ClassDB::bind_method(D_METHOD("set_soundfont_path", "soundfont_path"), &GDDoom::set_soundfont_path);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "soundfont_path", PROPERTY_HINT_FILE, "*.sf2,*.sf3"), "set_soundfont_path", "get_soundfont_path");
+}
+
+bool GDDoom::get_import_assets() {
+	return false;
+}
+
+void GDDoom::set_import_assets(bool p_import_assets) {
+	import_assets();
 }
 
 bool GDDoom::get_enabled() {
@@ -92,6 +117,17 @@ String GDDoom::get_wad_path() {
 
 void GDDoom::set_wad_path(String p_wad_path) {
 	wad_path = p_wad_path;
+}
+
+String GDDoom::get_soundfont_path() {
+	return soundfont_path;
+}
+
+void GDDoom::set_soundfont_path(String p_soundfont_path) {
+	soundfont_path = p_soundfont_path;
+}
+
+void GDDoom::import_assets() {
 }
 
 void GDDoom::update_doom() {
@@ -245,29 +281,86 @@ void GDDoom::_thread_parse_wad() {
 	}
 
 	// Find music
-	for (int i = 0; i < keys.size(); i++) {
-		String key = keys[i];
-		if (!key.begins_with("D_")) {
-			continue;
-		}
+	if (FileAccess::file_exists(soundfont_path)) {
+		fluid_settings_t *settings;
+		fluid_synth_t *synth;
+		fluid_player_t *player;
+		fluid_file_renderer_t *renderer;
 
-		Dictionary info = files[key];
-		PackedByteArray file_array = info["data"];
-		PackedByteArray midi_output;
+		String soundfont_global_path = ProjectSettings::get_singleton()->globalize_path(soundfont_path);
+		char *soundfont_global_path_char = strdup(soundfont_global_path.utf8().get_data());
 
-		bool converted = !GDDoomMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
+		for (int i = 0; i < keys.size(); i++) {
+			String key = keys[i];
+			if (!key.begins_with("D_")) {
+				continue;
+			}
 
-		String midi_path = vformat("res://midi");
-		String file_path = vformat("res://midi/%s.mid", key);
-		String file_name = vformat("%s.mid", key);
-		if (FileAccess::file_exists(file_path)) {
+			Dictionary info = files[key];
+			PackedByteArray file_array = info["data"];
+			PackedByteArray midi_output;
+
+			bool converted = !GDDoomMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
+			if (!converted) {
+				continue;
+			}
+			// UtilityFunctions::print(vformat("converted %s? %s (size: %s)", key, converted, midi_output.size()));
+
+			String midi_path = vformat("res://midi");
+			String midi_file_path = vformat("res://midi/%s.mid", key);
+			String wav_file_path = vformat("res://midi/%s.wav", key);
+			String midi_file_name = vformat("%s.mid", key);
 			Ref<DirAccess> dir = DirAccess::open(midi_path);
-			dir->remove(file_name);
-		}
-		Ref<FileAccess> mid = FileAccess::open(file_path, FileAccess::ModeFlags::WRITE);
-		mid->store_buffer(midi_output);
+			if (FileAccess::file_exists(midi_file_path)) {
+				dir->remove(midi_file_name);
+			}
+			if (FileAccess::file_exists(wav_file_path)) {
+				dir->remove(wav_file_path);
+			}
 
-		UtilityFunctions::print(vformat("converted %s? %s (size: %s)", key, converted, midi_output.size()));
+			Ref<FileAccess> mid = FileAccess::open(midi_file_path, FileAccess::ModeFlags::WRITE);
+			mid->store_buffer(midi_output);
+			mid->close();
+
+			settings = new_fluid_settings();
+
+			String path_to_midi_file = ProjectSettings::get_singleton()->globalize_path(midi_file_path);
+			char *path_to_midi_file_char = strdup(path_to_midi_file.utf8().get_data());
+			String path_to_wav_output = ProjectSettings::get_singleton()->globalize_path(vformat("res://midi/%s.wav", key));
+			char *path_to_wav_output_char = strdup(path_to_wav_output.utf8().get_data());
+			fluid_settings_setstr(settings, "audio.file.name", path_to_wav_output_char);
+			fluid_settings_setstr(settings, "player.timing-source", "sample");
+			fluid_settings_setint(settings, "synth.lock-memory", 0);
+
+			UtilityFunctions::print(vformat("midi: %s, wav: %s, sf2-3: %s", path_to_midi_file, path_to_wav_output, soundfont_global_path));
+
+			synth = new_fluid_synth(settings);
+			int synth_id = fluid_synth_sfload(synth, soundfont_global_path_char, false);
+
+			player = new_fluid_player(synth);
+			fluid_player_add(player, path_to_midi_file_char);
+			fluid_player_play(player);
+
+			renderer = new_fluid_file_renderer(synth);
+
+			while (fluid_player_get_status(player) == FLUID_PLAYER_PLAYING) {
+				if (fluid_file_renderer_process_block(renderer) != FLUID_OK) {
+					break;
+				}
+			}
+
+			fluid_player_stop(player);
+			fluid_player_join(player);
+
+			delete_fluid_file_renderer(renderer);
+
+			delete_fluid_player(player);
+
+			fluid_synth_sfunload(synth, synth_id, false);
+			delete_fluid_synth(synth);
+
+			delete_fluid_settings(settings);
+		}
 	}
 
 	call_deferred("append_sounds");

@@ -71,6 +71,7 @@ private:
 
 	bool enabled = false;
 	String wad_path;
+	String soundfont_path;
 
 	// TextureRect *texture_rect;
 	Ref<ImageTexture> img_texture = nullptr;
@@ -91,6 +92,9 @@ private:
 
 	void update_doom();
 
+	bool get_import_assets();
+	void set_import_assets(bool p_import_assets);
+
 protected:
 	static void _bind_methods();
 
@@ -102,6 +106,10 @@ public:
 	void set_enabled(bool p_enabled);
 	String get_wad_path();
 	void set_wad_path(String p_wad_path);
+	String get_soundfont_path();
+	void set_soundfont_path(String p_soundfont_path);
+
+	void import_assets();
 
 	void _enter_tree() override;
 	void _exit_tree() override;

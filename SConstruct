@@ -44,7 +44,6 @@ env = SConscript("godot-cpp/SConstruct", {
 # - LINKFLAGS are for linking flags
 
 # tweak this if you want to use different folders, or more folders, to store your source code in.
-env_mus2mid = env.Clone()
 env.Append(CPPPATH=[os.path.abspath("src/"), os.path.abspath("thirdparty/doomgeneric")])
 env.Append(CPPDEFINES=["FEATURE_SOUND_GODOT"])
 
@@ -63,6 +62,7 @@ doomgeneric_files = Glob("thirdparty/doomgeneric/doomgeneric/*.c", exclude=[
 spawn_sources += doomgeneric_files
 
 # Fluidsynth
+env.Append(LIBS=['fluidsynth'])
 env.Append(LIBPATH=[os.path.abspath(os.path.join("thirdparty", "fluidsynth", "build", "src"))])
 env.Append(CPPPATH=[
     os.path.abspath(os.path.join("thirdparty", "fluidsynth", "build", "include")), 
