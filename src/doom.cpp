@@ -45,7 +45,7 @@ extern "C" {
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-// GDDoom
+// GodotDoomNode
 #include "common.h"
 
 // Fluidsynth
@@ -68,6 +68,7 @@ void DOOM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("sound_fetching_thread_func"), &DOOM::sound_fetching_thread_func);
 	ClassDB::bind_method(D_METHOD("midi_fetching_thread_func"), &DOOM::midi_fetching_thread_func);
 	ClassDB::bind_method(D_METHOD("append_sounds"), &DOOM::append_sounds);
+	ClassDB::bind_method(D_METHOD("import_assets"), &DOOM::import_assets);
 	ClassDB::bind_method(D_METHOD("wad_thread_end"), &DOOM::wad_thread_end);
 	ClassDB::bind_method(D_METHOD("sound_fetching_thread_end"), &DOOM::sound_fetching_thread_end);
 	ClassDB::bind_method(D_METHOD("midi_fetching_thread_end"), &DOOM::midi_fetching_thread_end);
@@ -97,7 +98,7 @@ bool DOOM::get_import_assets() {
 }
 
 void DOOM::set_import_assets(bool p_import_assets) {
-	import_assets();
+	call_deferred("import_assets");
 }
 
 bool DOOM::get_enabled() {
@@ -107,11 +108,7 @@ bool DOOM::get_enabled() {
 void DOOM::set_enabled(bool p_enabled) {
 	enabled = p_enabled;
 
-	if (p_enabled) {
-		init_doom();
-	} else {
-		kill_doom();
-	}
+	update_doom();
 }
 
 String DOOM::get_wad_path() {
@@ -132,20 +129,34 @@ void DOOM::set_soundfont_path(String p_soundfont_path) {
 
 void DOOM::import_assets() {
 	if (wad_path.is_empty()) {
-		UtilityFunctions::printerr(vformat("[GDDoom] Wad path must not be empty."));
+		UtilityFunctions::printerr(vformat("[Godot DOOM node] Wad path must not be empty."));
 		return;
 	}
 
 	if (!FileAccess::file_exists(wad_path)) {
-		UtilityFunctions::printerr(vformat("[GDDoom] Wad path (\"%s\") isn't a file.", wad_path));
+		UtilityFunctions::printerr(vformat("[Godot DOOM node] Wad path (\"%s\") isn't a file.", wad_path));
 		return;
 	}
 
-	if (wad_thread->is_started()) {
-		UtilityFunctions::printerr(vformat("[GDDoom] A process is already importing assets."));
+	if (!wad_thread.is_null() && wad_thread->is_started()) {
+		UtilityFunctions::printerr(vformat("[Godot DOOM node] A process is already importing assets."));
 		return;
 	}
 
+	UtilityFunctions::print(vformat("import_assets"));
+
+	// Calculate hash
+	Ref<FileAccess> wad = FileAccess::open(wad_path, FileAccess::ModeFlags::READ);
+	Ref<HashingContext> hashing_context = nullptr;
+	hashing_context.instantiate();
+	hashing_context->start(HashingContext::HASH_SHA256);
+	// while (!wad->eof_reached()) {
+	// 	hashing_context->update(wad->get_buffer(1024));
+	// }
+	// PackedByteArray hash = hashing_context->finish();
+	// wad_hash = hash.hex_encode();
+
+	wad_thread.instantiate();
 	Callable wad_func = Callable(this, "wad_thread_func");
 	wad_thread->start(wad_func);
 }
@@ -153,8 +164,11 @@ void DOOM::import_assets() {
 void DOOM::update_doom() {
 	if (enabled && assets_ready) {
 		init_doom();
-	} else if (spawn_pid > 0) {
-		kill_doom();
+	} else {
+		enabled = false;
+		if (spawn_pid > 0) {
+			kill_doom();
+		}
 	}
 }
 
@@ -196,7 +210,7 @@ void DOOM::init_doom() {
 }
 
 void DOOM::launch_doom_executable() {
-	const char *path = ProjectSettings::get_singleton()->globalize_path("res://bin/godot-doom-node-spawn.linux.template_debug.x86_64").utf8().get_data();
+	const char *path = ProjectSettings::get_singleton()->globalize_path("res://bin/godot-doom-spawn.linux.template_debug.x86_64").utf8().get_data();
 	const char *id = vformat("%s", shm_id).utf8().get_data();
 	const char *doom1_wad = vformat("%s", ProjectSettings::get_singleton()->globalize_path(wad_path)).utf8().get_data();
 
@@ -227,16 +241,6 @@ void DOOM::wad_thread_func() {
 		UtilityFunctions::printerr(vformat("Could not open \"%s\"", wad_path));
 		return;
 	}
-
-	// Calculate hash
-	Ref<HashingContext> hashing_context;
-	hashing_context->start(HashingContext::HASH_SHA256);
-	while (!wad->eof_reached()) {
-		hashing_context->update(wad->get_buffer(1024));
-	}
-	wad->seek(0);
-	PackedByteArray hash = hashing_context->finish();
-	wad_hash = hash.hex_encode();
 
 	PackedByteArray sig_array = wad->get_buffer(sizeof(WadOriginalSignature));
 	signature.signature = vformat("%c%c%c%c", sig_array[0], sig_array[1], sig_array[2], sig_array[3]);
@@ -332,7 +336,7 @@ void DOOM::midi_fetching_thread_func() {
 		PackedByteArray file_array = info["data"];
 		PackedByteArray midi_output;
 
-		String hash_dir = vformat("res://gddoom/%s-%s/", wad_path.get_basename(), wad_hash);
+		String hash_dir = vformat("res://godot-doom/%s-%s/", wad_path.get_basename(), wad_hash);
 		String midi_file_name = vformat("%s.mid", key);
 		String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
 		String ogg_file_name = vformat("%s.ogg", key);
@@ -647,12 +651,12 @@ void DOOM::init_shm() {
 	id = last_id;
 	last_id += 1;
 
-	const char *spawn_id = vformat("%s-%06d", GDDOOM_SPAWN_SHM_NAME, id).utf8().get_data();
+	const char *spawn_id = vformat("%s-%06d", GODOT_DOOM_SHM_NAME, id).utf8().get_data();
 	strcpy(shm_id, spawn_id);
 
-	// UtilityFunctions::print(vformat("gddoom init_shm unlinking preemptively \"%s\"", _shm_id));
+	// UtilityFunctions::print(vformat("godot doom node init_shm unlinking preemptively \"%s\"", _shm_id));
 	shm_unlink(shm_id);
-	// UtilityFunctions::print(vformat("gddoom init_shm open shm \"%s\"", _shm_id));
+	// UtilityFunctions::print(vformat("godot doom node init_shm open shm \"%s\"", _shm_id));
 	shm_fd = shm_open(shm_id, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (shm_fd < 0) {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));

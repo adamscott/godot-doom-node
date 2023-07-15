@@ -22,3 +22,5 @@ godot-cpp/extension_api.json
 # midi files
 midi/*
 !midi/.gitkeep
+
+!bin/godot-doom.gdextension

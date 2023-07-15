@@ -1,7 +1,7 @@
-#ifndef GDDOOM_REGISTER_TYPES_H
-#define GDDOOM_REGISTER_TYPES_H
+#ifndef DOOM_REGISTER_TYPES
+#define DOOM_REGISTER_TYPES
 
-void initialize_gddoom_module();
-void uninitialize_gddoom_module();
+void initialize_godot_doom_module();
+void uninitialize_godot_doom_module();
 
-#endif // GDDOOM_REGISTER_TYPES_H
+#endif // DOOM_REGISTER_TYPES

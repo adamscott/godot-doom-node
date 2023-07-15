@@ -18,7 +18,7 @@ mono_crash.*.json
 /godot-cpp
 
 demo/bin/*
-!demo/bin/gddoom.gdextension
+!demo/bin/godot-doom.gdextension
 
 # VSCode
 .vscode/settings.json

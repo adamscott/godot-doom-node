@@ -1,5 +1,5 @@
-#ifndef GDDOOM_H
-#define GDDOOM_H
+#ifndef DOOM_H
+#define DOOM_H
 
 #include <cstdint>
 
@@ -138,4 +138,4 @@ public:
 
 } // namespace godot
 
-#endif // GDDOOM_H
+#endif // DOOM_H

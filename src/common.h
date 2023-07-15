@@ -7,8 +7,8 @@
 #include "doomgeneric/doomtype.h"
 #include "doomgeneric/w_wad.h"
 
-#define GDDOOM_SPAWN_SHM_NAME "/doom"
-#define GDDOOM_SPAWN_SHM_ID GDDOOM_SPAWN_SHM_NAME "000000"
+#define GODOT_DOOM_SHM_NAME "/doom"
+#define GODOT_DOOM_SPAWN_SHM_ID GODOT_DOOM_SHM_NAME "000000"
 
 typedef enum SoundInstructionType {
 	SOUND_INSTRUCTION_TYPE_EMPTY,

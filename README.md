@@ -1,2 +1,2 @@
-# godot-doom-node
+# godot-doom
 GDExtension fun test

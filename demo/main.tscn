@@ -1,26 +1,16 @@
-[gd_scene load_steps=4 format=3 uid="uid://b5fakufphm7c5"]
+[gd_scene load_steps=3 format=3 uid="uid://b5fakufphm7c5"]
 
 [ext_resource type="Script" path="res://main.gd" id="1_bak3v"]
 
-[sub_resource type="ImageTexture" id="ImageTexture_k8fi7"]
-
-[sub_resource type="ImageTexture" id="ImageTexture_rgt0v"]
+[sub_resource type="ImageTexture" id="ImageTexture_bsfwo"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_bak3v")
 
-[node name="GDDoom" type="GDDoom" parent="."]
-wad_path = "res://doom/DOOM1.WAD"
-soundfont_path = "res://doom/sf3/MuseScore_General.sf3"
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-texture = SubResource("ImageTexture_k8fi7")
+[node name="DOOM" type="DOOM" parent="."]
+assets_wad_path = "res://doom/DOOM1.WAD"
+assets_soundfont_path = "res://doom/sf3/MuseScore_General.sf3"
+offset_right = 917.0
+offset_bottom = 557.0
+texture = SubResource("ImageTexture_bsfwo")
 stretch_mode = 5
-
-[node name="GDDoom2" type="GDDoom" parent="."]
-offset_right = 40.0
-offset_bottom = 40.0
-texture = SubResource("ImageTexture_rgt0v")

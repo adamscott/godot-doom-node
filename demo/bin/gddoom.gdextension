@@ -1,8 +1,0 @@
-[configuration]
-
-entry_symbol = "gddoom_library_init"
-compatibility_minimum = 4.1
-
-[libraries]
-
-linux.64="res://bin/libgddoom.linux.template_debug.x86_64.so"
