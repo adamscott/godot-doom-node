@@ -13,7 +13,7 @@
 
 typedef struct LumpSha1 {
 	unsigned char sha1[SHA1_LEN];
-	void *handle;
+	uint8_t handle;
 } LumpSha1;
 
 static LumpSha1 lump_sha1_list[UINT8_MAX];
@@ -24,7 +24,7 @@ boolean static get_sha1_from_handle(void *handle, char *buffer) {
 	boolean found = false;
 	for (int i = 0; i < lump_sha1_list_size; i++) {
 		LumpSha1 lump = lump_sha1_list[i];
-		if (lump.handle == handle) {
+		if (lump.handle == (uint64_t)handle) {
 			memcpy(sha1, lump.sha1, SHA1_LEN);
 			found = true;
 			break;
@@ -84,7 +84,7 @@ static void *Godot_RegisterSong(void *data, int len) {
 	LumpSha1 sha;
 	memcpy(sha.sha1, hash, SHA1_LEN);
 	lump_sha1_list[lump_sha1_list_size] = sha;
-	void *handle = &sha.handle;
+	void *handle = (void *)(uint64_t)lump_sha1_list_size;
 	lump_sha1_list_size++;
 
 	MusicInstruction inst;
