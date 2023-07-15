@@ -58,9 +58,14 @@ private:
 	char shm_id[255];
 
 	bool exiting = false;
+	bool assets_ready = false;
+	bool sound_fetch_complete = false;
+	bool midi_fetch_complete = false;
 
 	Ref<Thread> doom_thread = nullptr;
 	Ref<Thread> wad_thread = nullptr;
+	Ref<Thread> sound_fetching_thread = nullptr;
+	Ref<Thread> midi_fetching_thread = nullptr;
 
 	SharedMemory *shm;
 	__pid_t spawn_pid;
@@ -73,19 +78,33 @@ private:
 	String wad_path;
 	String soundfont_path;
 
+	String wad_name;
+	String wad_hash;
+
 	// TextureRect *texture_rect;
 	Ref<ImageTexture> img_texture = nullptr;
 	unsigned char screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
 	PackedByteArray screen_buffer_array;
 
 	void init_shm();
+
 	void doom_thread_func();
 	void wad_thread_func();
+	void sound_fetching_thread_func();
+	void midi_fetching_thread_func();
+
+	void append_sounds();
+	void wad_thread_end();
+	void sound_fetching_thread_end();
+	void midi_fetching_thread_end();
+
+	void start_sound_fetching();
+	void start_midi_fetching();
+	void update_assets_status();
 
 	void init_doom();
 	void kill_doom();
 	void launch_doom_executable();
-	void append_sounds();
 
 	void update_screen_buffer();
 	void update_sounds();

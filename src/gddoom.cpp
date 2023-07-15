@@ -58,19 +58,21 @@ extern "C" {
 
 using namespace godot;
 
-// ======
-// GDDoom
-// ======
-
 void GDDoom::_bind_methods() {
 	// Signals.
 	ADD_SIGNAL(MethodInfo("assets_imported"));
 
 	ClassDB::bind_method(D_METHOD("doom_thread_func"), &GDDoom::doom_thread_func);
 	ClassDB::bind_method(D_METHOD("wad_thread_func"), &GDDoom::wad_thread_func);
+	ClassDB::bind_method(D_METHOD("sound_fetching_thread_func"), &GDDoom::sound_fetching_thread_func);
+	ClassDB::bind_method(D_METHOD("midi_fetching_thread_func"), &GDDoom::midi_fetching_thread_func);
 	ClassDB::bind_method(D_METHOD("append_sounds"), &GDDoom::append_sounds);
+	ClassDB::bind_method(D_METHOD("wad_thread_end"), &GDDoom::wad_thread_end);
+	ClassDB::bind_method(D_METHOD("sound_fetching_thread_end"), &GDDoom::sound_fetching_thread_end);
+	ClassDB::bind_method(D_METHOD("midi_fetching_thread_end"), &GDDoom::midi_fetching_thread_end);
 
 	ADD_GROUP("DOOM", "doom_");
+	ADD_GROUP("Assets", "assets_");
 
 	ClassDB::bind_method(D_METHOD("get_enabled"), &GDDoom::get_enabled);
 	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &GDDoom::set_enabled);
@@ -78,15 +80,15 @@ void GDDoom::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_import_assets"), &GDDoom::get_import_assets);
 	ClassDB::bind_method(D_METHOD("set_import_assets", "import"), &GDDoom::set_import_assets);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "import_assets"), "set_import_assets", "get_import_assets");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "assets_import_assets"), "set_import_assets", "get_import_assets");
 
 	ClassDB::bind_method(D_METHOD("get_wad_path"), &GDDoom::get_wad_path);
 	ClassDB::bind_method(D_METHOD("set_wad_path", "wad_path"), &GDDoom::set_wad_path);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "wad_path", PROPERTY_HINT_FILE, "*.wad"), "set_wad_path", "get_wad_path");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "assets_wad_path", PROPERTY_HINT_FILE, "*.wad"), "set_wad_path", "get_wad_path");
 
 	ClassDB::bind_method(D_METHOD("get_soundfont_path"), &GDDoom::get_soundfont_path);
 	ClassDB::bind_method(D_METHOD("set_soundfont_path", "soundfont_path"), &GDDoom::set_soundfont_path);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "soundfont_path", PROPERTY_HINT_FILE, "*.sf2,*.sf3"), "set_soundfont_path", "get_soundfont_path");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "assets_soundfont_path", PROPERTY_HINT_FILE, "*.sf2,*.sf3"), "set_soundfont_path", "get_soundfont_path");
 }
 
 bool GDDoom::get_import_assets() {
@@ -128,12 +130,29 @@ void GDDoom::set_soundfont_path(String p_soundfont_path) {
 }
 
 void GDDoom::import_assets() {
+	if (wad_path.is_empty()) {
+		UtilityFunctions::printerr(vformat("[GDDoom] Wad path must not be empty."));
+		return;
+	}
+
+	if (!FileAccess::file_exists(wad_path)) {
+		UtilityFunctions::printerr(vformat("[GDDoom] Wad path (\"%s\") isn't a file.", wad_path));
+		return;
+	}
+
+	if (wad_thread->is_started()) {
+		UtilityFunctions::printerr(vformat("[GDDoom] A process is already importing assets."));
+		return;
+	}
+
+	Callable wad_func = Callable(this, "wad_thread_func");
+	wad_thread->start(wad_func);
 }
 
 void GDDoom::update_doom() {
-	if (enabled && FileAccess::file_exists(wad_path)) {
+	if (enabled && assets_ready) {
 		init_doom();
-	} else {
+	} else if (spawn_pid > 0) {
 		kill_doom();
 	}
 }
@@ -171,11 +190,8 @@ void GDDoom::init_doom() {
 	}
 
 	Callable doom_func = Callable(this, "doom_thread_func");
-	Callable wad_func = Callable(this, "wad_thread_func");
 	UtilityFunctions::print("Calling _thread.start()");
 	doom_thread->start(doom_func);
-	wad_thread->start(wad_func);
-	// wad_thread_func();
 }
 
 void GDDoom::launch_doom_executable() {
@@ -211,9 +227,17 @@ void GDDoom::wad_thread_func() {
 		return;
 	}
 
+	// Calculate hash
+	Ref<HashingContext> hashing_context;
+	hashing_context->start(HashingContext::HASH_SHA256);
+	while (!wad->eof_reached()) {
+		hashing_context->update(wad->get_buffer(1024));
+	}
 	wad->seek(0);
-	PackedByteArray sig_array = wad->get_buffer(sizeof(WadOriginalSignature));
+	PackedByteArray hash = hashing_context->finish();
+	wad_hash = hash.hex_encode();
 
+	PackedByteArray sig_array = wad->get_buffer(sizeof(WadOriginalSignature));
 	signature.signature = vformat("%c%c%c%c", sig_array[0], sig_array[1], sig_array[2], sig_array[3]);
 	signature.number_of_files = sig_array.decode_s32(sizeof(WadOriginalSignature::sig));
 	signature.fat_offset = sig_array.decode_s32(sizeof(WadOriginalSignature::sig) + sizeof(WadOriginalSignature::numFiles));
@@ -244,10 +268,12 @@ void GDDoom::wad_thread_func() {
 		info["data"] = file_array;
 
 		files[file_entry.name] = info;
-		// UtilityFunctions::print(vformat("file %s, size: %x", file_entry.name, file_entry.length_data));
 	}
 
-	// Find sounds
+	call_deferred("wad_thread_end");
+}
+
+void GDDoom::sound_fetching_thread_func() {
 	Array keys = files.keys();
 	for (int i = 0; i < keys.size(); i++) {
 		String key = keys[i];
@@ -258,7 +284,6 @@ void GDDoom::wad_thread_func() {
 		PackedByteArray file_array = info["data"];
 
 		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
-
 		player->set_name(key);
 
 		// https://doomwiki.org/wiki/Sound
@@ -280,91 +305,102 @@ void GDDoom::wad_thread_func() {
 		info["player"] = player;
 	}
 
-	// Find music
-	if (FileAccess::file_exists(soundfont_path)) {
-		fluid_settings_t *settings;
-		fluid_synth_t *synth;
-		fluid_player_t *player;
-		fluid_file_renderer_t *renderer;
+	call_deferred("sound_fetching_thread_end");
+}
 
-		String soundfont_global_path = ProjectSettings::get_singleton()->globalize_path(soundfont_path);
-		char *soundfont_global_path_char = strdup(soundfont_global_path.utf8().get_data());
+void GDDoom::midi_fetching_thread_func() {
+	if (!FileAccess::file_exists(soundfont_path)) {
+		return;
+	}
+	fluid_settings_t *settings;
+	fluid_synth_t *synth;
+	fluid_player_t *player;
+	fluid_file_renderer_t *renderer;
 
-		for (int i = 0; i < keys.size(); i++) {
-			String key = keys[i];
-			if (!key.begins_with("D_")) {
-				continue;
-			}
+	String soundfont_global_path = ProjectSettings::get_singleton()->globalize_path(soundfont_path);
+	char *soundfont_global_path_char = strdup(soundfont_global_path.utf8().get_data());
 
-			Dictionary info = files[key];
-			PackedByteArray file_array = info["data"];
-			PackedByteArray midi_output;
-
-			bool converted = !GDDoomMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
-			if (!converted) {
-				continue;
-			}
-			// UtilityFunctions::print(vformat("converted %s? %s (size: %s)", key, converted, midi_output.size()));
-
-			String midi_path = vformat("res://midi");
-			String midi_file_path = vformat("res://midi/%s.mid", key);
-			String ogg_file_path = vformat("res://midi/%s.ogg", key);
-			String midi_file_name = vformat("%s.mid", key);
-			Ref<DirAccess> dir = DirAccess::open(midi_path);
-			if (FileAccess::file_exists(midi_file_path)) {
-				dir->remove(midi_file_name);
-			}
-			if (FileAccess::file_exists(ogg_file_path)) {
-				dir->remove(ogg_file_path);
-			}
-
-			Ref<FileAccess> mid = FileAccess::open(midi_file_path, FileAccess::ModeFlags::WRITE);
-			mid->store_buffer(midi_output);
-			mid->close();
-
-			settings = new_fluid_settings();
-
-			String path_to_midi_file = ProjectSettings::get_singleton()->globalize_path(midi_file_path);
-			char *path_to_midi_file_char = strdup(path_to_midi_file.utf8().get_data());
-			String path_to_ogg_output = ProjectSettings::get_singleton()->globalize_path(ogg_file_path);
-			char *path_to_ogg_output_char = strdup(path_to_ogg_output.utf8().get_data());
-			fluid_settings_setstr(settings, "audio.file.name", path_to_ogg_output_char);
-			fluid_settings_setstr(settings, "audio.file.type", "oga");
-			fluid_settings_setstr(settings, "player.timing-source", "sample");
-			fluid_settings_setint(settings, "synth.lock-memory", 0);
-
-			UtilityFunctions::print(vformat("midi: %s, ogg: %s, sf2-3: %s", path_to_midi_file, path_to_ogg_output, soundfont_global_path));
-
-			synth = new_fluid_synth(settings);
-			int synth_id = fluid_synth_sfload(synth, soundfont_global_path_char, false);
-
-			player = new_fluid_player(synth);
-			fluid_player_add(player, path_to_midi_file_char);
-			fluid_player_play(player);
-
-			renderer = new_fluid_file_renderer(synth);
-
-			while (fluid_player_get_status(player) == FLUID_PLAYER_PLAYING) {
-				if (fluid_file_renderer_process_block(renderer) != FLUID_OK) {
-					break;
-				}
-			}
-
-			fluid_player_stop(player);
-			fluid_player_join(player);
-
-			delete_fluid_file_renderer(renderer);
-
-			delete_fluid_player(player);
-
-			fluid_synth_sfunload(synth, synth_id, false);
-			delete_fluid_synth(synth);
-
-			delete_fluid_settings(settings);
+	Array keys = files.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		String key = keys[i];
+		if (!key.begins_with("D_")) {
+			continue;
 		}
+
+		Dictionary info = files[key];
+		PackedByteArray file_array = info["data"];
+		PackedByteArray midi_output;
+
+		String hash_dir = vformat("res://gddoom/%s-%s/", wad_path.get_basename(), wad_hash);
+		String midi_file_name = vformat("%s.mid", key);
+		String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
+		String ogg_file_name = vformat("%s.ogg", key);
+		String ogg_file_path = vformat("%s/%s", hash_dir, ogg_file_name);
+
+		if (FileAccess::file_exists(midi_file_path) && FileAccess::file_exists(ogg_file_path)) {
+			// The file exist, we can skip processing it
+			continue;
+		}
+
+		// The files are incomplete, deleting them is preferrable
+		Ref<DirAccess> dir = DirAccess::open(hash_dir);
+		if (FileAccess::file_exists(midi_file_path)) {
+			dir->remove(midi_file_name);
+		}
+		if (FileAccess::file_exists(ogg_file_path)) {
+			dir->remove(ogg_file_name);
+		}
+
+		String midi_file_path_globalized = ProjectSettings::get_singleton()->globalize_path(midi_file_path);
+		char *midi_file_path_globalized_char = strdup(midi_file_path_globalized.utf8().get_data());
+		String ogg_file_path_globalized = ProjectSettings::get_singleton()->globalize_path(ogg_file_path);
+		char *ogg_file_path_globalized_char = strdup(ogg_file_path_globalized.utf8().get_data());
+
+		bool converted = !GDDoomMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
+		if (!converted) {
+			continue;
+		}
+
+		Ref<FileAccess> mid = FileAccess::open(midi_file_path, FileAccess::ModeFlags::WRITE);
+		mid->store_buffer(midi_output);
+		mid->close();
+
+		settings = new_fluid_settings();
+
+		fluid_settings_setstr(settings, "audio.file.name", ogg_file_path_globalized_char);
+		fluid_settings_setstr(settings, "audio.file.type", "oga");
+		fluid_settings_setstr(settings, "player.timing-source", "sample");
+		fluid_settings_setint(settings, "synth.lock-memory", 0);
+
+		synth = new_fluid_synth(settings);
+		int synth_id = fluid_synth_sfload(synth, soundfont_global_path_char, false);
+
+		player = new_fluid_player(synth);
+		fluid_player_add(player, midi_file_path_globalized_char);
+		fluid_player_play(player);
+
+		renderer = new_fluid_file_renderer(synth);
+
+		while (fluid_player_get_status(player) == FLUID_PLAYER_PLAYING) {
+			if (fluid_file_renderer_process_block(renderer) != FLUID_OK) {
+				break;
+			}
+		}
+
+		fluid_player_stop(player);
+		fluid_player_join(player);
+
+		delete_fluid_file_renderer(renderer);
+
+		delete_fluid_player(player);
+
+		fluid_synth_sfunload(synth, synth_id, false);
+		delete_fluid_synth(synth);
+
+		delete_fluid_settings(settings);
 	}
 
-	call_deferred("append_sounds");
+	call_deferred("midi_fetching_thread_end");
 }
 
 void GDDoom::append_sounds() {
@@ -384,11 +420,50 @@ void GDDoom::append_sounds() {
 	}
 }
 
-void GDDoom::kill_doom() {
-	if (spawn_pid == 0) {
-		return;
+void GDDoom::wad_thread_end() {
+	if (wad_thread->is_alive()) {
+		wad_thread->wait_to_finish();
 	}
 
+	start_sound_fetching();
+	start_midi_fetching();
+}
+
+void GDDoom::sound_fetching_thread_end() {
+	if (sound_fetching_thread->is_alive()) {
+		sound_fetching_thread->wait_to_finish();
+	}
+
+	sound_fetch_complete = true;
+}
+
+void GDDoom::midi_fetching_thread_end() {
+	if (sound_fetching_thread->is_alive()) {
+		sound_fetching_thread->wait_to_finish();
+	}
+
+	midi_fetch_complete = true;
+}
+
+void GDDoom::start_sound_fetching() {
+	sound_fetching_thread.instantiate();
+	Callable func = Callable(this, "sound_fetching_thread_func");
+	sound_fetching_thread->start(func);
+}
+
+void GDDoom::start_midi_fetching() {
+	midi_fetching_thread.instantiate();
+	Callable func = Callable(this, "midi_fetching_thread_func");
+	midi_fetching_thread->start(func);
+}
+
+void GDDoom::update_assets_status() {
+	if (sound_fetch_complete && midi_fetch_complete) {
+		emit_signal("assets_imported");
+	}
+}
+
+void GDDoom::kill_doom() {
 	// UtilityFunctions::print("kill_doom()");
 	exiting = true;
 	if (!doom_thread.is_null()) {
