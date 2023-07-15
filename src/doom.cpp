@@ -196,7 +196,7 @@ void DOOM::init_doom() {
 }
 
 void DOOM::launch_doom_executable() {
-	const char *path = ProjectSettings::get_singleton()->globalize_path("res://bin/gddoom-spawn.linux.template_debug.x86_64").utf8().get_data();
+	const char *path = ProjectSettings::get_singleton()->globalize_path("res://bin/godot-doom-node-spawn.linux.template_debug.x86_64").utf8().get_data();
 	const char *id = vformat("%s", shm_id).utf8().get_data();
 	const char *doom1_wad = vformat("%s", ProjectSettings::get_singleton()->globalize_path(wad_path)).utf8().get_data();
 

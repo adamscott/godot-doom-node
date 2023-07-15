@@ -71,18 +71,18 @@ env.Append(CPPPATH=[
 
 if env["platform"] == "macos":
     library = env.SharedLibrary(
-        "demo/bin/gddoom.{}.{}.framework/gddoom.{}.{}".format(
+        "demo/bin/godot-doom-node.{}.{}.framework/godot-doom-node.{}.{}".format(
             env["platform"], env["target"], env["platform"], env["target"]
         ),
         source=sources,
     )
 else:
     library = env.SharedLibrary(
-        "demo/bin/gddoom{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+        "demo/bin/godot-doom-node{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
         source=sources,
     )
 program = env.Program(
-    "demo/bin/gddoom-spawn{}".format(env["suffix"]),
+    "demo/bin/godot-doom-node-spawn{}".format(env["suffix"]),
     source=spawn_sources
 )
 
