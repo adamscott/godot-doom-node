@@ -20,5 +20,5 @@ godot-cpp/custom.py
 godot-cpp/extension_api.json
 
 # midi files
-midi/*.mid
-midi/*.wav
+midi/*
+!midi/.gitkeep
