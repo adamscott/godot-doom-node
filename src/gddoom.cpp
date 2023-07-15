@@ -308,14 +308,14 @@ void GDDoom::_thread_parse_wad() {
 
 			String midi_path = vformat("res://midi");
 			String midi_file_path = vformat("res://midi/%s.mid", key);
-			String wav_file_path = vformat("res://midi/%s.wav", key);
+			String ogg_file_path = vformat("res://midi/%s.ogg", key);
 			String midi_file_name = vformat("%s.mid", key);
 			Ref<DirAccess> dir = DirAccess::open(midi_path);
 			if (FileAccess::file_exists(midi_file_path)) {
 				dir->remove(midi_file_name);
 			}
-			if (FileAccess::file_exists(wav_file_path)) {
-				dir->remove(wav_file_path);
+			if (FileAccess::file_exists(ogg_file_path)) {
+				dir->remove(ogg_file_path);
 			}
 
 			Ref<FileAccess> mid = FileAccess::open(midi_file_path, FileAccess::ModeFlags::WRITE);
@@ -326,13 +326,14 @@ void GDDoom::_thread_parse_wad() {
 
 			String path_to_midi_file = ProjectSettings::get_singleton()->globalize_path(midi_file_path);
 			char *path_to_midi_file_char = strdup(path_to_midi_file.utf8().get_data());
-			String path_to_wav_output = ProjectSettings::get_singleton()->globalize_path(vformat("res://midi/%s.wav", key));
-			char *path_to_wav_output_char = strdup(path_to_wav_output.utf8().get_data());
-			fluid_settings_setstr(settings, "audio.file.name", path_to_wav_output_char);
+			String path_to_ogg_output = ProjectSettings::get_singleton()->globalize_path(ogg_file_path);
+			char *path_to_ogg_output_char = strdup(path_to_ogg_output.utf8().get_data());
+			fluid_settings_setstr(settings, "audio.file.name", path_to_ogg_output_char);
+			fluid_settings_setstr(settings, "audio.file.type", "oga");
 			fluid_settings_setstr(settings, "player.timing-source", "sample");
 			fluid_settings_setint(settings, "synth.lock-memory", 0);
 
-			UtilityFunctions::print(vformat("midi: %s, wav: %s, sf2-3: %s", path_to_midi_file, path_to_wav_output, soundfont_global_path));
+			UtilityFunctions::print(vformat("midi: %s, ogg: %s, sf2-3: %s", path_to_midi_file, path_to_ogg_output, soundfont_global_path));
 
 			synth = new_fluid_synth(settings);
 			int synth_id = fluid_synth_sfload(synth, soundfont_global_path_char, false);
