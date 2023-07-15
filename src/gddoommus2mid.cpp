@@ -18,7 +18,7 @@
 // mus2mid.cpp - Adam Scott 2023 - https://adamscott.studio
 // Use Godot 4 PackedByteArray instead of DOOM memory system.
 
-#include "mus2mid.h"
+#include "gddoommus2mid.h"
 
 #include "godot_cpp/classes/file_access.hpp"
 #include "godot_cpp/core/class_db.hpp"
@@ -50,7 +50,7 @@ bool GDDoomMus2Mid::write_time(uint8_t p_time, PackedByteArray p_midi_output) {
 	while (true) {
 		write_val = buffer & 0xFF;
 
-		if (!p_midi_output.append(write_val)) {
+		if (p_midi_output.append(write_val)) {
 			return true;
 		}
 		track_size++;
@@ -71,7 +71,7 @@ bool GDDoomMus2Mid::write_end_track(PackedByteArray p_midi_output) {
 		return true;
 	}
 
-	if (!p_midi_output.append(end_track[0]) || !p_midi_output.append(end_track[1]) || !p_midi_output.append(end_track[2])) {
+	if (p_midi_output.append(end_track[0]) || p_midi_output.append(end_track[1]) || p_midi_output.append(end_track[2])) {
 		return true;
 	}
 
@@ -86,17 +86,17 @@ bool GDDoomMus2Mid::write_press_key(uint8_t p_channel, uint8_t p_key, uint8_t p_
 		return true;
 	}
 
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
 	working = p_key & 0x7F;
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
 	working = p_velocity & 0x7F;
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
@@ -112,17 +112,17 @@ bool GDDoomMus2Mid::write_release_key(uint8_t p_channel, uint8_t p_key, PackedBy
 		return true;
 	}
 
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
 	working = p_key & 0x7F;
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
 	working = 0;
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
@@ -138,17 +138,17 @@ bool GDDoomMus2Mid::write_pitch_wheel(uint8_t p_channel, uint16_t p_wheel, Packe
 		return true;
 	}
 
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
 	working = p_wheel & 0x7F;
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
 	working = (p_wheel >> 7) & 0x7F;
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
@@ -164,12 +164,12 @@ bool GDDoomMus2Mid::write_change_patch(uint8_t p_channel, uint8_t p_patch, Packe
 		return true;
 	}
 
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
 	working = p_patch & 0x7F;
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
@@ -185,12 +185,12 @@ bool GDDoomMus2Mid::write_change_controller_valued(uint8_t p_channel, uint8_t p_
 		return true;
 	}
 
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
 	working = p_control & 0x7F;
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
@@ -206,7 +206,7 @@ bool GDDoomMus2Mid::write_change_controller_valued(uint8_t p_channel, uint8_t p_
 		working = 0x7F;
 	}
 
-	if (!p_midi_output.append(working)) {
+	if (p_midi_output.append(working)) {
 		return true;
 	}
 
@@ -462,10 +462,12 @@ bool GDDoomMus2Mid::mus2mid(PackedByteArray p_mus_input, PackedByteArray p_midi_
 	track_size_buffer[2] = (track_size >> 8) & 0xFF;
 	track_size_buffer[3] = track_size & 0xFF;
 
-	p_midi_output.set(18, track_size_buffer[0]);
-	p_midi_output.set(19, track_size_buffer[1]);
-	p_midi_output.set(20, track_size_buffer[2]);
-	p_midi_output.set(21, track_size_buffer[3]);
+	if (p_midi_output.size() > 21) {
+		p_midi_output.set(18, track_size_buffer[0]);
+		p_midi_output.set(19, track_size_buffer[1]);
+		p_midi_output.set(20, track_size_buffer[2]);
+		p_midi_output.set(21, track_size_buffer[3]);
+	}
 
 	return false;
 }

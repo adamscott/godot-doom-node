@@ -8,7 +8,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "gddoom.h"
-#include "mus2mid.h"
+#include "gddoommus2mid.h"
 
 using namespace godot;
 

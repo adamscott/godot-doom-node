@@ -44,6 +44,7 @@ env = SConscript("godot-cpp/SConstruct", {
 # - LINKFLAGS are for linking flags
 
 # tweak this if you want to use different folders, or more folders, to store your source code in.
+env_mus2mid = env.Clone()
 env.Append(CPPPATH=[os.path.abspath("src/"), os.path.abspath("thirdparty/doomgeneric")])
 env.Append(CPPDEFINES=["FEATURE_SOUND_GODOT"])
 

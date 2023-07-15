@@ -5,6 +5,7 @@
 #include "godot_cpp/classes/audio_stream_player.hpp"
 #include "godot_cpp/classes/audio_stream_wav.hpp"
 #include "godot_cpp/classes/control.hpp"
+#include "godot_cpp/classes/dir_access.hpp"
 #include "godot_cpp/classes/file_access.hpp"
 #include "godot_cpp/classes/global_constants.hpp"
 #include "godot_cpp/classes/image_texture.hpp"
@@ -29,7 +30,7 @@
 #include "doomgeneric/doomtype.h"
 
 #include "gddoom.h"
-#include "mus2mid.h"
+#include "gddoommus2mid.h"
 #include "swap.h"
 
 extern "C" {
@@ -254,7 +255,19 @@ void GDDoom::_thread_parse_wad() {
 		PackedByteArray file_array = info["data"];
 		PackedByteArray midi_output;
 
-		GDDoomMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
+		bool converted = !GDDoomMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
+
+		String midi_path = vformat("res://midi");
+		String file_path = vformat("res://midi/%s.mid", key);
+		String file_name = vformat("%s.mid", key);
+		if (FileAccess::file_exists(file_path)) {
+			Ref<DirAccess> dir = DirAccess::open(midi_path);
+			dir->remove(file_name);
+		}
+		Ref<FileAccess> mid = FileAccess::open(file_path, FileAccess::ModeFlags::WRITE);
+		mid->store_buffer(midi_output);
+
+		UtilityFunctions::print(vformat("converted %s? %s (size: %s)", key, converted, midi_output.size()));
 	}
 
 	call_deferred("append_sounds");
