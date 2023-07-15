@@ -38,8 +38,8 @@ using namespace godot;
 void GDDoomMus2Mid::_bind_methods() {
 }
 
-bool GDDoomMus2Mid::write_time(uint8_t p_time, PackedByteArray p_midi_output) {
-	uint8_t buffer = p_time & 0x7F;
+bool GDDoomMus2Mid::write_time(uint32_t p_time, PackedByteArray &p_midi_output) {
+	uint32_t buffer = p_time & 0x7F;
 	uint8_t write_val;
 
 	while ((p_time >>= 7) != 0) {
@@ -64,7 +64,7 @@ bool GDDoomMus2Mid::write_time(uint8_t p_time, PackedByteArray p_midi_output) {
 	}
 }
 
-bool GDDoomMus2Mid::write_end_track(PackedByteArray p_midi_output) {
+bool GDDoomMus2Mid::write_end_track(PackedByteArray &p_midi_output) {
 	uint8_t end_track[] = { 0xFF, 0x2F, 0x00 };
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -79,7 +79,7 @@ bool GDDoomMus2Mid::write_end_track(PackedByteArray p_midi_output) {
 	return false;
 }
 
-bool GDDoomMus2Mid::write_press_key(uint8_t p_channel, uint8_t p_key, uint8_t p_velocity, PackedByteArray p_midi_output) {
+bool GDDoomMus2Mid::write_press_key(uint8_t p_channel, uint8_t p_key, uint8_t p_velocity, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_PRESSKEY | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -105,7 +105,7 @@ bool GDDoomMus2Mid::write_press_key(uint8_t p_channel, uint8_t p_key, uint8_t p_
 	return false;
 }
 
-bool GDDoomMus2Mid::write_release_key(uint8_t p_channel, uint8_t p_key, PackedByteArray p_midi_output) {
+bool GDDoomMus2Mid::write_release_key(uint8_t p_channel, uint8_t p_key, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_RELEASEKEY | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -131,7 +131,7 @@ bool GDDoomMus2Mid::write_release_key(uint8_t p_channel, uint8_t p_key, PackedBy
 	return false;
 }
 
-bool GDDoomMus2Mid::write_pitch_wheel(uint8_t p_channel, uint16_t p_wheel, PackedByteArray p_midi_output) {
+bool GDDoomMus2Mid::write_pitch_wheel(uint8_t p_channel, uint16_t p_wheel, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_PITCHWHEEL | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -157,7 +157,7 @@ bool GDDoomMus2Mid::write_pitch_wheel(uint8_t p_channel, uint16_t p_wheel, Packe
 	return false;
 }
 
-bool GDDoomMus2Mid::write_change_patch(uint8_t p_channel, uint8_t p_patch, PackedByteArray p_midi_output) {
+bool GDDoomMus2Mid::write_change_patch(uint8_t p_channel, uint8_t p_patch, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_CHANGEPATCH | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -178,7 +178,7 @@ bool GDDoomMus2Mid::write_change_patch(uint8_t p_channel, uint8_t p_patch, Packe
 	return false;
 }
 
-bool GDDoomMus2Mid::write_change_controller_valued(uint8_t p_channel, uint8_t p_control, uint8_t p_value, PackedByteArray p_midi_output) {
+bool GDDoomMus2Mid::write_change_controller_valued(uint8_t p_channel, uint8_t p_control, uint8_t p_value, PackedByteArray &p_midi_output) {
 	uint8_t working = MidiEvent::MIDI_CHANGECONTROLLER | p_channel;
 
 	if (write_time(queued_time, p_midi_output)) {
@@ -215,14 +215,14 @@ bool GDDoomMus2Mid::write_change_controller_valued(uint8_t p_channel, uint8_t p_
 	return false;
 }
 
-bool GDDoomMus2Mid::write_change_controller_valueless(uint8_t p_channel, uint8_t p_control, PackedByteArray p_midi_output) {
+bool GDDoomMus2Mid::write_change_controller_valueless(uint8_t p_channel, uint8_t p_control, PackedByteArray &p_midi_output) {
 	return write_change_controller_valued(p_channel, p_control, 0, p_midi_output);
 }
 
-int8_t GDDoomMus2Mid::allocate_midi_channel() {
-	int8_t result;
-	int8_t max;
-	int8_t i;
+int32_t GDDoomMus2Mid::allocate_midi_channel() {
+	int32_t result;
+	int32_t max;
+	int32_t i;
 
 	max = -1;
 
@@ -241,7 +241,7 @@ int8_t GDDoomMus2Mid::allocate_midi_channel() {
 	return result;
 }
 
-int8_t GDDoomMus2Mid::get_midi_channel(int8_t p_mus_channel, PackedByteArray p_midi_output) {
+int32_t GDDoomMus2Mid::get_midi_channel(int8_t p_mus_channel, PackedByteArray &p_midi_output) {
 	if (p_mus_channel == MUS_PERCUSSION_CHAN) {
 		return MIDI_PERCUSSION_CHAN;
 	}
@@ -254,7 +254,7 @@ int8_t GDDoomMus2Mid::get_midi_channel(int8_t p_mus_channel, PackedByteArray p_m
 	return channel_map[p_mus_channel];
 }
 
-bool GDDoomMus2Mid::read_mus_header(PackedByteArray p_file, GDDoomMus2Mid::MusHeader *header) {
+bool GDDoomMus2Mid::read_mus_header(PackedByteArray &p_file, GDDoomMus2Mid::MusHeader *header) {
 	if (p_file.size() < sizeof(GDDoomMus2Mid::MusHeader)) {
 		return false;
 	}
@@ -270,13 +270,13 @@ bool GDDoomMus2Mid::read_mus_header(PackedByteArray p_file, GDDoomMus2Mid::MusHe
 	return true;
 }
 
-bool GDDoomMus2Mid::mus2mid(PackedByteArray p_mus_input, PackedByteArray p_midi_output) {
+bool GDDoomMus2Mid::mus2mid(PackedByteArray &p_mus_input, PackedByteArray &p_midi_output) {
 	uint32_t seek = 0;
 
 	MusHeader mus_file_header;
 
 	uint8_t event_descriptor;
-	int8_t channel;
+	int32_t channel;
 	MusEvent event;
 
 	uint8_t key;
@@ -285,11 +285,11 @@ bool GDDoomMus2Mid::mus2mid(PackedByteArray p_mus_input, PackedByteArray p_midi_
 
 	uint8_t track_size_buffer[4];
 
-	int8_t hit_score_end = 0;
+	int32_t hit_score_end = 0;
 
 	uint8_t working;
 
-	uint8_t time_delay;
+	uint32_t time_delay;
 
 	for (channel = 0; channel < NUM_CHANNELS; channel++) {
 		channel_map[channel] = -1;
@@ -310,9 +310,9 @@ bool GDDoomMus2Mid::mus2mid(PackedByteArray p_mus_input, PackedByteArray p_midi_
 	}
 
 	// Write mus_file_header to the output
-	uint8_t buffer[sizeof(MusHeader)];
-	memcpy(&buffer, &mus_file_header, sizeof(MusHeader));
-	for (int i = 0; i < sizeof(MusHeader); i++) {
+	uint8_t buffer[sizeof(midi_header)];
+	memcpy(&buffer, &midi_header, sizeof(midi_header));
+	for (int i = 0; i < sizeof(midi_header); i++) {
 		p_midi_output.append(buffer[i]);
 	}
 
@@ -457,17 +457,17 @@ bool GDDoomMus2Mid::mus2mid(PackedByteArray p_mus_input, PackedByteArray p_midi_
 		return true;
 	}
 
+	UtilityFunctions::print(vformat("END! track_size: %s", track_size));
+
 	track_size_buffer[0] = (track_size >> 24) & 0xFF;
 	track_size_buffer[1] = (track_size >> 16) & 0xFF;
 	track_size_buffer[2] = (track_size >> 8) & 0xFF;
 	track_size_buffer[3] = track_size & 0xFF;
 
-	if (p_midi_output.size() > 21) {
-		p_midi_output.set(18, track_size_buffer[0]);
-		p_midi_output.set(19, track_size_buffer[1]);
-		p_midi_output.set(20, track_size_buffer[2]);
-		p_midi_output.set(21, track_size_buffer[3]);
-	}
+	p_midi_output.set(18, track_size_buffer[0]);
+	p_midi_output.set(19, track_size_buffer[1]);
+	p_midi_output.set(20, track_size_buffer[2]);
+	p_midi_output.set(21, track_size_buffer[3]);
 
 	return false;
 }

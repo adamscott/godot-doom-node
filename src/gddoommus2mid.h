@@ -62,27 +62,27 @@ private:
 		127, 127, 127, 127, 127, 127, 127, 127
 	};
 
-	uint8_t queued_time;
-	uint8_t track_size;
+	uint32_t queued_time;
+	uint32_t track_size;
 
 	uint8_t controller_map[15] = {
 		0x00, 0x20, 0x01, 0x07, 0x0A, 0x0B, 0x5B, 0x5D,
 		0x40, 0x43, 0x78, 0x7B, 0x7E, 0x7F, 0x79
 	};
 
-	int8_t channel_map[NUM_CHANNELS];
+	int32_t channel_map[NUM_CHANNELS];
 
-	bool write_time(uint8_t p_time, PackedByteArray p_midi_output);
-	bool write_end_track(PackedByteArray p_midi_output);
-	bool write_press_key(uint8_t p_channel, uint8_t p_key, uint8_t p_velocity, PackedByteArray p_midi_output);
-	bool write_release_key(uint8_t p_channel, uint8_t p_key, PackedByteArray p_midi_output);
-	bool write_pitch_wheel(uint8_t p_channel, uint16_t p_wheel, PackedByteArray p_midi_output);
-	bool write_change_patch(uint8_t p_channel, uint8_t p_patch, PackedByteArray p_midi_output);
-	bool write_change_controller_valued(uint8_t p_channel, uint8_t p_control, uint8_t p_value, PackedByteArray p_midi_output);
-	bool write_change_controller_valueless(uint8_t p_channel, uint8_t p_control, PackedByteArray p_midi_output);
-	int8_t allocate_midi_channel();
-	int8_t get_midi_channel(int8_t p_mus_channel, PackedByteArray p_midi_output);
-	bool read_mus_header(PackedByteArray p_file, MusHeader *header);
+	bool write_time(uint32_t p_time, PackedByteArray &p_midi_output);
+	bool write_end_track(PackedByteArray &p_midi_output);
+	bool write_press_key(uint8_t p_channel, uint8_t p_key, uint8_t p_velocity, PackedByteArray &p_midi_output);
+	bool write_release_key(uint8_t p_channel, uint8_t p_key, PackedByteArray &p_midi_output);
+	bool write_pitch_wheel(uint8_t p_channel, uint16_t p_wheel, PackedByteArray &p_midi_output);
+	bool write_change_patch(uint8_t p_channel, uint8_t p_patch, PackedByteArray &p_midi_output);
+	bool write_change_controller_valued(uint8_t p_channel, uint8_t p_control, uint8_t p_value, PackedByteArray &p_midi_output);
+	bool write_change_controller_valueless(uint8_t p_channel, uint8_t p_control, PackedByteArray &p_midi_output);
+	int32_t allocate_midi_channel();
+	int32_t get_midi_channel(int8_t p_mus_channel, PackedByteArray &p_midi_output);
+	bool read_mus_header(PackedByteArray &p_file, MusHeader *header);
 
 protected:
 	static void _bind_methods();
@@ -90,7 +90,7 @@ protected:
 public:
 	static GDDoomMus2Mid *get_singleton();
 
-	bool mus2mid(PackedByteArray p_mus_input, PackedByteArray midi_output);
+	bool mus2mid(PackedByteArray &p_mus_input, PackedByteArray &midi_output);
 
 	GDDoomMus2Mid();
 	~GDDoomMus2Mid();
