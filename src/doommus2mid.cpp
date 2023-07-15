@@ -457,8 +457,6 @@ bool DOOMMus2Mid::mus2mid(PackedByteArray &p_mus_input, PackedByteArray &p_midi_
 		return true;
 	}
 
-	UtilityFunctions::print(vformat("END! track_size: %s", track_size));
-
 	track_size_buffer[0] = (track_size >> 24) & 0xFF;
 	track_size_buffer[1] = (track_size >> 16) & 0xFF;
 	track_size_buffer[2] = (track_size >> 8) & 0xFF;

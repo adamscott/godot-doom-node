@@ -143,18 +143,10 @@ void DOOM::import_assets() {
 		return;
 	}
 
-	UtilityFunctions::print(vformat("import_assets"));
-
-	// Calculate hash
-	Ref<FileAccess> wad = FileAccess::open(wad_path, FileAccess::ModeFlags::READ);
-	Ref<HashingContext> hashing_context = nullptr;
-	hashing_context.instantiate();
-	hashing_context->start(HashingContext::HASH_SHA256);
-	// while (!wad->eof_reached()) {
-	// 	hashing_context->update(wad->get_buffer(1024));
-	// }
-	// PackedByteArray hash = hashing_context->finish();
-	// wad_hash = hash.hex_encode();
+	Ref<DirAccess> user_dir = DirAccess::open("user://");
+	if (!user_dir->dir_exists("godot-doom")) {
+		user_dir->make_dir("godot-doom");
+	}
 
 	wad_thread.instantiate();
 	Callable wad_func = Callable(this, "wad_thread_func");
@@ -175,7 +167,6 @@ void DOOM::update_doom() {
 void DOOM::init_doom() {
 	exiting = false;
 
-	UtilityFunctions::print("init_doom!");
 	init_shm();
 	shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
@@ -205,7 +196,6 @@ void DOOM::init_doom() {
 	}
 
 	Callable doom_func = Callable(this, "doom_thread_func");
-	UtilityFunctions::print("Calling _thread.start()");
 	doom_thread->start(doom_func);
 }
 
@@ -227,13 +217,10 @@ void DOOM::launch_doom_executable() {
 		NULL
 	};
 
-	// UtilityFunctions::print("launching execve");
 	execve(args[0], args, envp);
 }
 
 void DOOM::wad_thread_func() {
-	UtilityFunctions::print(vformat("wad_thread called"));
-
 	files.clear();
 
 	Ref<FileAccess> wad = FileAccess::open(wad_path, FileAccess::ModeFlags::READ);
@@ -246,7 +233,6 @@ void DOOM::wad_thread_func() {
 	signature.signature = vformat("%c%c%c%c", sig_array[0], sig_array[1], sig_array[2], sig_array[3]);
 	signature.number_of_files = sig_array.decode_s32(sizeof(WadOriginalSignature::sig));
 	signature.fat_offset = sig_array.decode_s32(sizeof(WadOriginalSignature::sig) + sizeof(WadOriginalSignature::numFiles));
-	UtilityFunctions::print(vformat("signature: %s, number of files: %x, offset: %x", signature.signature, signature.number_of_files, signature.fat_offset));
 
 	wad->seek(signature.fat_offset);
 	PackedByteArray wad_files = wad->get_buffer(sizeof(WadOriginalFileEntry) * signature.number_of_files);
@@ -274,6 +260,18 @@ void DOOM::wad_thread_func() {
 
 		files[file_entry.name] = info;
 	}
+
+	// Calculate hash
+	Ref<HashingContext> hashing_context;
+	hashing_context.instantiate();
+	hashing_context->start(HashingContext::HASH_SHA256);
+	wad->seek(0);
+	while (!wad->eof_reached()) {
+		hashing_context->update(wad->get_buffer(1024));
+	}
+	wad->close();
+	PackedByteArray hash = hashing_context->finish();
+	wad_hash = hash.hex_encode();
 
 	call_deferred("wad_thread_end");
 }
@@ -336,7 +334,7 @@ void DOOM::midi_fetching_thread_func() {
 		PackedByteArray file_array = info["data"];
 		PackedByteArray midi_output;
 
-		String hash_dir = vformat("res://godot-doom/%s-%s/", wad_path.get_basename(), wad_hash);
+		String hash_dir = vformat("user://godot-doom/%s-%s", wad_path.get_file().get_basename(), wad_hash);
 		String midi_file_name = vformat("%s.mid", key);
 		String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
 		String ogg_file_name = vformat("%s.ogg", key);
@@ -348,12 +346,16 @@ void DOOM::midi_fetching_thread_func() {
 		}
 
 		// The files are incomplete, deleting them is preferrable
-		Ref<DirAccess> dir = DirAccess::open(hash_dir);
+		Ref<DirAccess> godot_doom_dir = DirAccess::open("user://godot-doom");
+		if (!godot_doom_dir->dir_exists(hash_dir)) {
+			godot_doom_dir->make_dir(hash_dir);
+		}
+
 		if (FileAccess::file_exists(midi_file_path)) {
-			dir->remove(midi_file_name);
+			godot_doom_dir->remove(vformat("%s/%s", hash_dir, midi_file_name));
 		}
 		if (FileAccess::file_exists(ogg_file_path)) {
-			dir->remove(ogg_file_name);
+			godot_doom_dir->remove(vformat("%s/%s", hash_dir, ogg_file_name));
 		}
 
 		String midi_file_path_globalized = ProjectSettings::get_singleton()->globalize_path(midi_file_path);
@@ -469,7 +471,6 @@ void DOOM::update_assets_status() {
 }
 
 void DOOM::kill_doom() {
-	// UtilityFunctions::print("kill_doom()");
 	exiting = true;
 	if (!doom_thread.is_null()) {
 		doom_thread->wait_to_finish();
@@ -479,7 +480,6 @@ void DOOM::kill_doom() {
 		wad_thread->wait_to_finish();
 	}
 
-	// UtilityFunctions::print(vformat("Removing %s", _shm_id));
 	int result = shm_unlink(shm_id);
 	if (result < 0) {
 		UtilityFunctions::printerr(vformat("ERROR unlinking shm %s: %s", shm_id, strerror(errno)));
@@ -489,15 +489,12 @@ void DOOM::kill_doom() {
 		kill(spawn_pid, SIGKILL);
 	}
 	spawn_pid = 0;
-	// UtilityFunctions::print("ending kill doom!");
 }
 
 void DOOM::_process(double delta) {
 	if (spawn_pid == 0) {
 		return;
 	}
-
-	// UtilityFunctions::print(vformat("_spawn_pid: %s", _spawn_pid));
 
 	update_screen_buffer();
 	update_sounds();
@@ -534,18 +531,11 @@ void DOOM::update_sounds() {
 			case SOUND_INSTRUCTION_TYPE_START_SOUND: {
 				String name = vformat("DS%s", String(instructions.name).to_upper());
 				AudioStreamPlayer *source = sound_container->get_node<AudioStreamPlayer>(name);
-				UtilityFunctions::print(vformat("trying to duplicate %s, %d", name, instructions.pitch));
 
 				if (source == nullptr) {
 					continue;
 				}
 
-				// AudioStreamPlayer *clone = (AudioStreamPlayer *)source->duplicate();
-				// clone->set_pitch_scale(instructions.pitch)
-				// clone->set_volume_db(
-				// 		UtilityFunctions::linear_to_db(
-				// 				UtilityFunctions::remap(instructions.volume, 0.0, 127.0, 0.0, 1.0)));
-				// clone->set_autoplay(true);
 				String channel_name = vformat("Channel%s", instructions.channel);
 				AudioStreamPlayer *squatting_sound = sound_container->get_node<AudioStreamPlayer>(channel_name);
 
@@ -559,11 +549,6 @@ void DOOM::update_sounds() {
 									UtilityFunctions::remap(instructions.volume, 0.0, 127.0, 0.0, 2.0)));
 					squatting_sound->play();
 				}
-
-				// sound_container->add_child(clone);
-				// clone->set_owner(get_tree()->get_edited_scene_root());
-				// clone->set_name(channel_name);
-				// clone->play();
 			} break;
 
 			case SOUND_INSTRUCTION_TYPE_EMPTY:
@@ -582,40 +567,29 @@ void DOOM::_ready() {
 }
 
 void DOOM::_enter_tree() {
-	// UtilityFunctions::print("_enter_tree()");
 }
 
 void DOOM::_exit_tree() {
 	if (enabled) {
 		kill_doom();
 	}
-
-	// texture_rect->queue_free();
 }
 
 void DOOM::doom_thread_func() {
-	// UtilityFunctions::print("doom_thread START!");
-
 	while (true) {
-		// UtilityFunctions::print("Start thread loop");
 		if (this->exiting) {
 			return;
 		}
 
 		// Send the tick signal
-		// UtilityFunctions::print(vformat("Send SIGUSR1 signal to %s!", _spawn_pid));
 		while (!this->shm->init) {
 			if (this->exiting) {
 				return;
 			}
-			// UtilityFunctions::print("thread: not init...");
-			// OS::get_singleton()->delay_usec(10);
-			OS::get_singleton()->delay_msec(1000);
+			OS::get_singleton()->delay_msec(10);
 		}
-		// UtilityFunctions::print("thread detects shm is init!");
 		kill(spawn_pid, SIGUSR1);
 
-		// OS::get_singleton()->delay_msec(1000);
 		shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
 		// // Let's wait for the shared memory to be ready
@@ -623,9 +597,9 @@ void DOOM::doom_thread_func() {
 			if (this->exiting) {
 				return;
 			}
-			OS::get_singleton()->delay_usec(10);
+			OS::get_singleton()->delay_msec(10);
 		}
-		// UtilityFunctions::print("thread discovered that shm is ready!");
+
 		if (this->exiting) {
 			return;
 		}
@@ -654,9 +628,7 @@ void DOOM::init_shm() {
 	const char *spawn_id = vformat("%s-%06d", GODOT_DOOM_SHM_NAME, id).utf8().get_data();
 	strcpy(shm_id, spawn_id);
 
-	// UtilityFunctions::print(vformat("godot doom node init_shm unlinking preemptively \"%s\"", _shm_id));
 	shm_unlink(shm_id);
-	// UtilityFunctions::print(vformat("godot doom node init_shm open shm \"%s\"", _shm_id));
 	shm_fd = shm_open(shm_id, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (shm_fd < 0) {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));
