@@ -20,7 +20,7 @@ typedef enum SoundInstructionType {
 	SOUND_INSTRUCTION_TYPE_MAX
 } SoundInstructionType;
 
-typedef struct SoundInstructions {
+typedef struct SoundInstruction {
 	SoundInstructionType type;
 	char name[9];
 	int8_t channel;
@@ -29,7 +29,15 @@ typedef struct SoundInstructions {
 	int8_t pitch;
 	int8_t priority;
 	int8_t usefulness;
-} SoundInstructions;
+} SoundInstruction;
+
+typedef enum MusicInstructionType {
+	MUSIC_INSTRUCTION_TYPE_EMPTY
+} MusicInstructionType;
+
+typedef struct MusicInstruction {
+	MusicInstructionType type;
+} MusicInstruction;
 
 typedef struct SharedMemory {
 	uint64_t ticks_msec;
@@ -41,7 +49,7 @@ typedef struct SharedMemory {
 	uint8_t ready : 1;
 	uint8_t init : 1;
 	uint8_t sound_instructions_length;
-	SoundInstructions sound_instructions[UINT8_MAX];
+	SoundInstruction sound_instructions[UINT8_MAX];
 } SharedMemory;
 
 #endif /* COMMON_H */

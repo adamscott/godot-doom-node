@@ -526,27 +526,27 @@ void DOOM::update_sounds() {
 		return;
 	}
 
-	for (SoundInstructions instructions : sound_instructions) {
-		switch (instructions.type) {
+	for (SoundInstruction instruction : sound_instructions) {
+		switch (instruction.type) {
 			case SOUND_INSTRUCTION_TYPE_START_SOUND: {
-				String name = vformat("DS%s", String(instructions.name).to_upper());
+				String name = vformat("DS%s", String(instruction.name).to_upper());
 				AudioStreamPlayer *source = sound_container->get_node<AudioStreamPlayer>(name);
 
 				if (source == nullptr) {
 					continue;
 				}
 
-				String channel_name = vformat("Channel%s", instructions.channel);
+				String channel_name = vformat("Channel%s", instruction.channel);
 				AudioStreamPlayer *squatting_sound = sound_container->get_node<AudioStreamPlayer>(channel_name);
 
 				if (squatting_sound != nullptr) {
 					squatting_sound->stop();
 					squatting_sound->set_stream(source->get_stream());
 					squatting_sound->set_pitch_scale(
-							UtilityFunctions::remap(instructions.pitch, -127, 127, 0, 2));
+							UtilityFunctions::remap(instruction.pitch, -127, 127, 0, 2));
 					squatting_sound->set_volume_db(
 							UtilityFunctions::linear_to_db(
-									UtilityFunctions::remap(instructions.volume, 0.0, 127.0, 0.0, 2.0)));
+									UtilityFunctions::remap(instruction.volume, 0.0, 127.0, 0.0, 2.0)));
 					squatting_sound->play();
 				}
 			} break;
@@ -608,8 +608,8 @@ void DOOM::doom_thread_func() {
 		memcpy(screen_buffer, shm->screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
 		// Sounds
 		for (int i = 0; i < shm->sound_instructions_length; i++) {
-			SoundInstructions instructions = shm->sound_instructions[i];
-			sound_instructions.append(instructions);
+			SoundInstruction instruction = shm->sound_instructions[i];
+			sound_instructions.append(instruction);
 		}
 		shm->sound_instructions_length = 0;
 

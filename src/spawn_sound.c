@@ -59,7 +59,7 @@ static void Godot_PrecacheSounds(sfxinfo_t *sounds, int num_sounds) {
 		sfxinfo_t *sound = &sounds[i];
 		// GetSfxLumpName(sound, namebuf, sizeof(namebuf));
 
-		SoundInstructions inst;
+		SoundInstruction inst;
 		inst.type = SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND;
 		// strcpy(inst.name, namebuf);
 		strcpy(inst.name, sound->name);
@@ -83,7 +83,7 @@ static void Godot_StopSound(int handle) {
 
 static int Godot_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep) {
 	// char namebuf[9];
-	SoundInstructions inst;
+	SoundInstruction inst;
 	inst.type = SOUND_INSTRUCTION_TYPE_START_SOUND;
 	// GetSfxLumpName(sfxinfo, namebuf, sizeof(namebuf));
 	strcpy(inst.name, sfxinfo->name);

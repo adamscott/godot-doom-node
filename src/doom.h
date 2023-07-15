@@ -72,7 +72,7 @@ private:
 	int shm_fd;
 
 	Vector<String> uuids;
-	Vector<SoundInstructions> sound_instructions;
+	Vector<SoundInstruction> sound_instructions;
 
 	bool enabled = false;
 	String wad_path;
