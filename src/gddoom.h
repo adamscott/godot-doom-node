@@ -53,20 +53,20 @@ private:
 	WadSignature signature;
 	Dictionary files;
 
-	static int _last_id;
-	int _id;
-	char _shm_id[255];
+	static int last_id;
+	int id;
+	char shm_id[255];
 
-	bool _exiting = false;
+	bool exiting = false;
 
-	Ref<Thread> _thread = nullptr;
-	Ref<Thread> _thread_wad = nullptr;
+	Ref<Thread> doom_thread = nullptr;
+	Ref<Thread> wad_thread = nullptr;
 
-	SharedMemory *_shm;
-	__pid_t _spawn_pid;
-	int _shm_fd;
+	SharedMemory *shm;
+	__pid_t spawn_pid;
+	int shm_fd;
 
-	Vector<String> _uuids;
+	Vector<String> uuids;
 	Vector<SoundInstructions> sound_instructions;
 
 	bool enabled = false;
@@ -78,9 +78,9 @@ private:
 	unsigned char screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
 	PackedByteArray screen_buffer_array;
 
-	void _init_shm();
-	void _thread_func();
-	void _thread_parse_wad();
+	void init_shm();
+	void doom_thread_func();
+	void wad_thread_func();
 
 	void init_doom();
 	void kill_doom();

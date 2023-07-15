@@ -66,8 +66,8 @@ void GDDoom::_bind_methods() {
 	// Signals.
 	ADD_SIGNAL(MethodInfo("assets_imported"));
 
-	ClassDB::bind_method(D_METHOD("_thread_func"), &GDDoom::_thread_func);
-	ClassDB::bind_method(D_METHOD("_thread_parse_wad"), &GDDoom::_thread_parse_wad);
+	ClassDB::bind_method(D_METHOD("doom_thread_func"), &GDDoom::doom_thread_func);
+	ClassDB::bind_method(D_METHOD("wad_thread_func"), &GDDoom::wad_thread_func);
 	ClassDB::bind_method(D_METHOD("append_sounds"), &GDDoom::append_sounds);
 
 	ADD_GROUP("DOOM", "doom_");
@@ -139,19 +139,19 @@ void GDDoom::update_doom() {
 }
 
 void GDDoom::init_doom() {
-	_exiting = false;
+	exiting = false;
 
 	UtilityFunctions::print("init_doom!");
-	_init_shm();
-	_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
+	init_shm();
+	shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
-	_spawn_pid = fork();
-	if (_spawn_pid == 0) {
+	spawn_pid = fork();
+	if (spawn_pid == 0) {
 		launch_doom_executable();
 	}
 
-	_thread_wad.instantiate();
-	_thread.instantiate();
+	wad_thread.instantiate();
+	doom_thread.instantiate();
 
 	Node *sound_container = get_node<Node>("SoundContainer");
 	if (sound_container != nullptr) {
@@ -170,17 +170,17 @@ void GDDoom::init_doom() {
 		player->set_name(vformat("Channel%s", i));
 	}
 
-	Callable func = Callable(this, "_thread_func");
-	Callable parse_wad = Callable(this, "_thread_parse_wad");
+	Callable doom_func = Callable(this, "doom_thread_func");
+	Callable wad_func = Callable(this, "wad_thread_func");
 	UtilityFunctions::print("Calling _thread.start()");
-	_thread->start(func);
-	_thread_wad->start(parse_wad);
-	// _thread_parse_wad();
+	doom_thread->start(doom_func);
+	wad_thread->start(wad_func);
+	// wad_thread_func();
 }
 
 void GDDoom::launch_doom_executable() {
 	const char *path = ProjectSettings::get_singleton()->globalize_path("res://bin/gddoom-spawn.linux.template_debug.x86_64").utf8().get_data();
-	const char *id = vformat("%s", _shm_id).utf8().get_data();
+	const char *id = vformat("%s", shm_id).utf8().get_data();
 	const char *doom1_wad = vformat("%s", ProjectSettings::get_singleton()->globalize_path(wad_path)).utf8().get_data();
 
 	char *args[] = {
@@ -200,8 +200,8 @@ void GDDoom::launch_doom_executable() {
 	execve(args[0], args, envp);
 }
 
-void GDDoom::_thread_parse_wad() {
-	UtilityFunctions::print(vformat("_thread_parse_wad called"));
+void GDDoom::wad_thread_func() {
+	UtilityFunctions::print(vformat("wad_thread called"));
 
 	files.clear();
 
@@ -385,31 +385,35 @@ void GDDoom::append_sounds() {
 }
 
 void GDDoom::kill_doom() {
-	if (_spawn_pid == 0) {
+	if (spawn_pid == 0) {
 		return;
 	}
 
 	// UtilityFunctions::print("kill_doom()");
-	_exiting = true;
-	if (!_thread.is_null()) {
-		_thread->wait_to_finish();
+	exiting = true;
+	if (!doom_thread.is_null()) {
+		doom_thread->wait_to_finish();
+	}
+
+	if (!wad_thread.is_null()) {
+		wad_thread->wait_to_finish();
 	}
 
 	// UtilityFunctions::print(vformat("Removing %s", _shm_id));
-	int result = shm_unlink(_shm_id);
+	int result = shm_unlink(shm_id);
 	if (result < 0) {
-		UtilityFunctions::printerr(vformat("ERROR unlinking shm %s: %s", _shm_id, strerror(errno)));
+		UtilityFunctions::printerr(vformat("ERROR unlinking shm %s: %s", shm_id, strerror(errno)));
 	}
 
-	if (_spawn_pid > 0) {
-		kill(_spawn_pid, SIGKILL);
+	if (spawn_pid > 0) {
+		kill(spawn_pid, SIGKILL);
 	}
-	_spawn_pid = 0;
+	spawn_pid = 0;
 	// UtilityFunctions::print("ending kill doom!");
 }
 
 void GDDoom::_process(double delta) {
-	if (_spawn_pid == 0) {
+	if (spawn_pid == 0) {
 		return;
 	}
 
@@ -509,19 +513,19 @@ void GDDoom::_exit_tree() {
 	// texture_rect->queue_free();
 }
 
-void GDDoom::_thread_func() {
-	// UtilityFunctions::print("_thread_func START!");
+void GDDoom::doom_thread_func() {
+	// UtilityFunctions::print("doom_thread START!");
 
 	while (true) {
 		// UtilityFunctions::print("Start thread loop");
-		if (this->_exiting) {
+		if (this->exiting) {
 			return;
 		}
 
 		// Send the tick signal
 		// UtilityFunctions::print(vformat("Send SIGUSR1 signal to %s!", _spawn_pid));
-		while (!this->_shm->init) {
-			if (this->_exiting) {
+		while (!this->shm->init) {
+			if (this->exiting) {
 				return;
 			}
 			// UtilityFunctions::print("thread: not init...");
@@ -529,69 +533,69 @@ void GDDoom::_thread_func() {
 			OS::get_singleton()->delay_msec(1000);
 		}
 		// UtilityFunctions::print("thread detects shm is init!");
-		kill(_spawn_pid, SIGUSR1);
+		kill(spawn_pid, SIGUSR1);
 
 		// OS::get_singleton()->delay_msec(1000);
-		_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
+		shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
 		// // Let's wait for the shared memory to be ready
-		while (!this->_shm->ready) {
-			if (this->_exiting) {
+		while (!this->shm->ready) {
+			if (this->exiting) {
 				return;
 			}
 			OS::get_singleton()->delay_usec(10);
 		}
 		// UtilityFunctions::print("thread discovered that shm is ready!");
-		if (this->_exiting) {
+		if (this->exiting) {
 			return;
 		}
 		// The shared memory is ready
 		// Screenbuffer
-		memcpy(screen_buffer, _shm->screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
+		memcpy(screen_buffer, shm->screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
 		// Sounds
-		for (int i = 0; i < _shm->sound_instructions_length; i++) {
-			SoundInstructions instructions = _shm->sound_instructions[i];
+		for (int i = 0; i < shm->sound_instructions_length; i++) {
+			SoundInstructions instructions = shm->sound_instructions[i];
 			sound_instructions.append(instructions);
 		}
-		_shm->sound_instructions_length = 0;
+		shm->sound_instructions_length = 0;
 
 		// Let's sleep the time Doom asks
-		usleep(this->_shm->sleep_ms * 1000);
+		usleep(this->shm->sleep_ms * 1000);
 
 		// Reset the shared memory
-		this->_shm->ready = false;
+		this->shm->ready = false;
 	}
 }
 
-void GDDoom::_init_shm() {
-	_id = _last_id;
-	_last_id += 1;
+void GDDoom::init_shm() {
+	id = last_id;
+	last_id += 1;
 
-	const char *spawn_id = vformat("%s-%06d", GDDOOM_SPAWN_SHM_NAME, _id).utf8().get_data();
-	strcpy(_shm_id, spawn_id);
+	const char *spawn_id = vformat("%s-%06d", GDDOOM_SPAWN_SHM_NAME, id).utf8().get_data();
+	strcpy(shm_id, spawn_id);
 
 	// UtilityFunctions::print(vformat("gddoom init_shm unlinking preemptively \"%s\"", _shm_id));
-	shm_unlink(_shm_id);
+	shm_unlink(shm_id);
 	// UtilityFunctions::print(vformat("gddoom init_shm open shm \"%s\"", _shm_id));
-	_shm_fd = shm_open(_shm_id, O_RDWR | O_CREAT | O_EXCL, 0666);
-	if (_shm_fd < 0) {
+	shm_fd = shm_open(shm_id, O_RDWR | O_CREAT | O_EXCL, 0666);
+	if (shm_fd < 0) {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));
 		return;
 	}
 
-	ftruncate(_shm_fd, sizeof(SharedMemory));
-	_shm = (SharedMemory *)mmap(0, sizeof(SharedMemory), PROT_WRITE, MAP_SHARED, _shm_fd, 0);
-	if (_shm == nullptr) {
+	ftruncate(shm_fd, sizeof(SharedMemory));
+	shm = (SharedMemory *)mmap(0, sizeof(SharedMemory), PROT_WRITE, MAP_SHARED, shm_fd, 0);
+	if (shm == nullptr) {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));
 		return;
 	}
 }
 
 GDDoom::GDDoom() {
-	_spawn_pid = 0;
+	spawn_pid = 0;
 }
 
 GDDoom::~GDDoom() {
 }
 
-int GDDoom::_last_id = 0;
+int GDDoom::last_id = 0;
