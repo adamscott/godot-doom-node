@@ -629,10 +629,10 @@ void DOOM::update_sounds() {
 					squatting_sound->stop();
 					squatting_sound->set_stream(source->get_stream());
 					squatting_sound->set_pitch_scale(
-							UtilityFunctions::remap(instruction.pitch, INT32_MIN, INT32_MAX, 0, 2));
+							UtilityFunctions::remap(instruction.pitch, 0, INT8_MAX, 0, 2));
 					squatting_sound->set_volume_db(
 							UtilityFunctions::linear_to_db(
-									UtilityFunctions::remap(instruction.volume, 0.0, INT32_MAX, 0.0, 2.0)));
+									UtilityFunctions::remap(instruction.volume, 0.0, INT8_MAX, 0.0, 2.0)));
 					squatting_sound->play();
 				}
 			} break;
@@ -645,6 +645,15 @@ void DOOM::update_sounds() {
 		}
 	}
 	sound_instructions.clear();
+}
+
+void DOOM::update_music() {
+	Node *music_container = get_node<Node>("MusicContainer");
+	if (music_container == nullptr) {
+		return;
+	}
+
+	music_instructions.clear();
 }
 
 void DOOM::_ready() {
@@ -698,6 +707,13 @@ void DOOM::doom_thread_func() {
 			sound_instructions.append(instruction);
 		}
 		shm->sound_instructions_length = 0;
+
+		// Music
+		for (int i = 0; i < shm->music_instructions_length; i++) {
+			MusicInstruction instruction = shm->music_instructions[i];
+			music_instructions.append(instruction);
+		}
+		shm->music_instructions_length = 0;
 
 		// Let's sleep the time Doom asks
 		usleep(this->shm->sleep_ms * 1000);

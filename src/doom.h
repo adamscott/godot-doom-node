@@ -73,6 +73,7 @@ private:
 
 	Vector<String> uuids;
 	Vector<SoundInstruction> sound_instructions;
+	Vector<MusicInstruction> music_instructions;
 
 	bool enabled = false;
 	String wad_path;
@@ -110,6 +111,7 @@ private:
 
 	void update_screen_buffer();
 	void update_sounds();
+	void update_music();
 
 	void update_doom();
 

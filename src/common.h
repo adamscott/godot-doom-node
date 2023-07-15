@@ -34,7 +34,7 @@ typedef struct SoundInstruction {
 typedef enum MusicInstructionType {
 	MUSIC_INSTRUCTION_TYPE_EMPTY,
 	MUSIC_INSTRUCTION_TYPE_INIT,
-	MUSIC_INSTRUCTION_TYPE_SHUTDOWN,
+	MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC,
 	MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME,
 	MUSIC_INSTRUCTION_TYPE_PAUSE_SONG,
 	MUSIC_INSTRUCTION_TYPE_RESUME_SONG,
@@ -48,6 +48,7 @@ typedef struct MusicInstruction {
 	MusicInstructionType type;
 	char lump_sha1[20];
 	int32_t volume;
+	uint8_t looping : 1;
 } MusicInstruction;
 
 typedef struct SharedMemory {
@@ -61,6 +62,8 @@ typedef struct SharedMemory {
 	uint8_t init : 1;
 	uint8_t sound_instructions_length;
 	SoundInstruction sound_instructions[UINT8_MAX];
+	uint8_t music_instructions_length;
+	MusicInstruction music_instructions[UINT8_MAX];
 } SharedMemory;
 
 #endif /* COMMON_H */
