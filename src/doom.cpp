@@ -26,6 +26,7 @@
 #include "godot_cpp/variant/packed_byte_array.hpp"
 #include "godot_cpp/variant/packed_int32_array.hpp"
 #include "godot_cpp/variant/string.hpp"
+#include "godot_cpp/variant/typed_array.hpp"
 #include "godot_cpp/variant/utility_functions.hpp"
 #include "godot_cpp/variant/variant.hpp"
 
@@ -67,7 +68,6 @@ void DOOM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("wad_thread_func"), &DOOM::wad_thread_func);
 	ClassDB::bind_method(D_METHOD("sound_fetching_thread_func"), &DOOM::sound_fetching_thread_func);
 	ClassDB::bind_method(D_METHOD("midi_fetching_thread_func"), &DOOM::midi_fetching_thread_func);
-	ClassDB::bind_method(D_METHOD("append_sounds"), &DOOM::append_sounds);
 	ClassDB::bind_method(D_METHOD("import_assets"), &DOOM::import_assets);
 	ClassDB::bind_method(D_METHOD("wad_thread_end"), &DOOM::wad_thread_end);
 	ClassDB::bind_method(D_METHOD("sound_fetching_thread_end"), &DOOM::sound_fetching_thread_end);
@@ -177,23 +177,6 @@ void DOOM::init_doom() {
 
 	wad_thread.instantiate();
 	doom_thread.instantiate();
-
-	Node *sound_container = get_node<Node>("SoundContainer");
-	if (sound_container != nullptr) {
-		sound_container->set_name("tobedeleted");
-		sound_container->queue_free();
-	}
-	sound_container = memnew(Node);
-	add_child(sound_container);
-	sound_container->set_owner(get_tree()->get_edited_scene_root());
-	sound_container->set_name("SoundContainer");
-
-	for (int i = 0; i < 16; i++) {
-		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
-		sound_container->add_child(player);
-		player->set_owner(get_tree()->get_edited_scene_root());
-		player->set_name(vformat("Channel%s", i));
-	}
 
 	Callable doom_func = Callable(this, "doom_thread_func");
 	doom_thread->start(doom_func);
@@ -324,6 +307,8 @@ void DOOM::midi_fetching_thread_func() {
 	char *soundfont_global_path_char = strdup(soundfont_global_path.utf8().get_data());
 
 	Array keys = files.keys();
+
+	// Rendering loop
 	for (int i = 0; i < keys.size(); i++) {
 		String key = keys[i];
 		if (!key.begins_with("D_")) {
@@ -337,12 +322,12 @@ void DOOM::midi_fetching_thread_func() {
 		String hash_dir = vformat("user://godot-doom/%s-%s", wad_path.get_file().get_basename(), wad_hash);
 		String midi_file_name = vformat("%s.mid", key);
 		String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
-		String ogg_file_name = vformat("%s.ogg", key);
-		String ogg_file_path = vformat("%s/%s", hash_dir, ogg_file_name);
+		String wav_file_name = vformat("%s.wav", key);
+		String wav_file_path = vformat("%s/%s", hash_dir, wav_file_name);
 
-		if (FileAccess::file_exists(midi_file_path) && FileAccess::file_exists(ogg_file_path)) {
+		if (FileAccess::file_exists(midi_file_path) && FileAccess::file_exists(wav_file_path)) {
 			// The file exist, we can skip processing it
-			continue;
+			break;
 		}
 
 		// The files are incomplete, deleting them is preferrable
@@ -354,15 +339,16 @@ void DOOM::midi_fetching_thread_func() {
 		if (FileAccess::file_exists(midi_file_path)) {
 			godot_doom_dir->remove(vformat("%s/%s", hash_dir, midi_file_name));
 		}
-		if (FileAccess::file_exists(ogg_file_path)) {
-			godot_doom_dir->remove(vformat("%s/%s", hash_dir, ogg_file_name));
+		if (FileAccess::file_exists(wav_file_path)) {
+			godot_doom_dir->remove(vformat("%s/%s", hash_dir, wav_file_name));
 		}
 
 		String midi_file_path_globalized = ProjectSettings::get_singleton()->globalize_path(midi_file_path);
 		char *midi_file_path_globalized_char = strdup(midi_file_path_globalized.utf8().get_data());
-		String ogg_file_path_globalized = ProjectSettings::get_singleton()->globalize_path(ogg_file_path);
-		char *ogg_file_path_globalized_char = strdup(ogg_file_path_globalized.utf8().get_data());
+		String wav_file_path_globalized = ProjectSettings::get_singleton()->globalize_path(wav_file_path);
+		char *wav_file_path_globalized_char = strdup(wav_file_path_globalized.utf8().get_data());
 
+		// Mus to midi conversion
 		bool converted = !DOOMMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
 		if (!converted) {
 			continue;
@@ -372,12 +358,13 @@ void DOOM::midi_fetching_thread_func() {
 		mid->store_buffer(midi_output);
 		mid->close();
 
+		// Midi rendering
 		settings = new_fluid_settings();
-
-		fluid_settings_setstr(settings, "audio.file.name", ogg_file_path_globalized_char);
-		fluid_settings_setstr(settings, "audio.file.type", "oga");
+		fluid_settings_setstr(settings, "audio.file.name", wav_file_path_globalized_char);
+		fluid_settings_setstr(settings, "audio.file.type", "auto");
 		fluid_settings_setstr(settings, "player.timing-source", "sample");
 		fluid_settings_setint(settings, "synth.lock-memory", 0);
+		fluid_settings_setint(settings, "player.reset-synth", false);
 
 		synth = new_fluid_synth(settings);
 		int synth_id = fluid_synth_sfload(synth, soundfont_global_path_char, false);
@@ -407,13 +394,71 @@ void DOOM::midi_fetching_thread_func() {
 		delete_fluid_settings(settings);
 	}
 
+	// Resource creation loop
+	for (int i = 0; i < keys.size(); i++) {
+		String key = keys[i];
+		if (!key.begins_with("D_")) {
+			continue;
+		}
+
+		Dictionary info = files[key];
+		PackedByteArray data = info["data"];
+
+		String hash_dir = vformat("user://godot-doom/%s-%s", wad_path.get_file().get_basename(), wad_hash);
+		String midi_file_name = vformat("%s.mid", key);
+		String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
+		String wav_file_name = vformat("%s.wav", key);
+		String wav_file_path = vformat("%s/%s", hash_dir, wav_file_name);
+
+		Ref<FileAccess> wav_file = FileAccess::open(wav_file_path, FileAccess::ModeFlags::READ);
+		Ref<AudioStreamWAV> wav;
+		wav.instantiate();
+
+		PackedByteArray samples;
+		constexpr int SAMPLE_SIZE = 1024;
+		for (int i = 0; i < wav_file->get_length(); i += SAMPLE_SIZE) {
+			int buffer_length = i + SAMPLE_SIZE > wav_file->get_length() ? wav_file->get_length() - i : SAMPLE_SIZE;
+			samples.append_array(wav_file->get_buffer(buffer_length));
+		}
+		wav->set_data(samples);
+		wav->set_stereo(true);
+		wav->set_format(AudioStreamWAV::Format::FORMAT_16_BITS);
+
+		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
+		player->set_name(key);
+		player->set_stream(wav);
+
+		Ref<HashingContext> hashing_context;
+		hashing_context.instantiate();
+		hashing_context->start(HashingContext::HashType::HASH_SHA1);
+		hashing_context->update(data);
+		PackedByteArray hash = hashing_context->finish();
+		player->set_meta("sha1_mus", hash.hex_encode());
+
+		info["player"] = player;
+	}
+
 	call_deferred("midi_fetching_thread_end");
 }
 
 void DOOM::append_sounds() {
-	Node *sound_container = get_node<Node>("SoundContainer");
+	Node *sound_container = get_node_or_null("SoundContainer");
+	if (sound_container != nullptr) {
+		sound_container->set_name("tobedeleted");
+		sound_container->queue_free();
+	}
+	sound_container = memnew(Node);
+	add_child(sound_container);
+	sound_container->set_owner(get_tree()->get_edited_scene_root());
+	sound_container->set_name("SoundContainer");
 
-	// Find sounds
+	for (int i = 0; i < 16; i++) {
+		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
+		sound_container->add_child(player);
+		player->set_owner(get_tree()->get_edited_scene_root());
+		player->set_name(vformat("Channel%s", i));
+	}
+
 	Array keys = files.keys();
 	for (int i = 0; i < keys.size(); i++) {
 		String key = keys[i];
@@ -427,7 +472,39 @@ void DOOM::append_sounds() {
 	}
 }
 
+void DOOM::append_music() {
+	Node *music_container = get_node_or_null("MusicContainer");
+	if (music_container != nullptr) {
+		music_container->set_name("tobedeleted");
+		music_container->queue_free();
+	}
+	music_container = memnew(Node);
+	add_child(music_container);
+	music_container->set_owner(get_tree()->get_edited_scene_root());
+	music_container->set_name("MusicContainer");
+
+	AudioStreamPlayer *player = memnew(AudioStreamPlayer);
+	music_container->add_child(player);
+	player->set_owner(get_tree()->get_edited_scene_root());
+	player->set_name("Player");
+
+	Array keys = files.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		String key = keys[i];
+		if (!key.begins_with("D_")) {
+			continue;
+		}
+		Dictionary info = files[key];
+		AudioStreamPlayer *player = reinterpret_cast<AudioStreamPlayer *>((Object *)info["player"]);
+		if (player != nullptr) {
+			music_container->add_child(player);
+			player->set_owner(get_tree()->get_edited_scene_root());
+		}
+	}
+}
+
 void DOOM::wad_thread_end() {
+	UtilityFunctions::print(vformat("wad_thread_end"));
 	if (wad_thread->is_alive()) {
 		wad_thread->wait_to_finish();
 	}
@@ -437,19 +514,27 @@ void DOOM::wad_thread_end() {
 }
 
 void DOOM::sound_fetching_thread_end() {
+	UtilityFunctions::print(vformat("sound_fetching_thread_end"));
 	if (sound_fetching_thread->is_alive()) {
 		sound_fetching_thread->wait_to_finish();
 	}
 
+	append_sounds();
+
 	sound_fetch_complete = true;
+	update_assets_status();
 }
 
 void DOOM::midi_fetching_thread_end() {
+	UtilityFunctions::print(vformat("midi_fetching_thread_end"));
 	if (sound_fetching_thread->is_alive()) {
 		sound_fetching_thread->wait_to_finish();
 	}
 
+	append_music();
+
 	midi_fetch_complete = true;
+	update_assets_status();
 }
 
 void DOOM::start_sound_fetching() {
@@ -467,6 +552,7 @@ void DOOM::start_midi_fetching() {
 void DOOM::update_assets_status() {
 	if (sound_fetch_complete && midi_fetch_complete) {
 		emit_signal("assets_imported");
+		assets_ready = true;
 	}
 }
 
@@ -543,10 +629,10 @@ void DOOM::update_sounds() {
 					squatting_sound->stop();
 					squatting_sound->set_stream(source->get_stream());
 					squatting_sound->set_pitch_scale(
-							UtilityFunctions::remap(instruction.pitch, -127, 127, 0, 2));
+							UtilityFunctions::remap(instruction.pitch, INT32_MIN, INT32_MAX, 0, 2));
 					squatting_sound->set_volume_db(
 							UtilityFunctions::linear_to_db(
-									UtilityFunctions::remap(instruction.volume, 0.0, 127.0, 0.0, 2.0)));
+									UtilityFunctions::remap(instruction.volume, 0.0, INT32_MAX, 0.0, 2.0)));
 					squatting_sound->play();
 				}
 			} break;

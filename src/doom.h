@@ -94,6 +94,8 @@ private:
 	void midi_fetching_thread_func();
 
 	void append_sounds();
+	void append_music();
+
 	void wad_thread_end();
 	void sound_fetching_thread_end();
 	void midi_fetching_thread_end();

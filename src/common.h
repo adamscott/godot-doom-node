@@ -23,20 +23,31 @@ typedef enum SoundInstructionType {
 typedef struct SoundInstruction {
 	SoundInstructionType type;
 	char name[9];
-	int8_t channel;
-	int8_t volume;
-	int8_t sep;
-	int8_t pitch;
-	int8_t priority;
-	int8_t usefulness;
+	int32_t channel;
+	int32_t volume;
+	int32_t sep;
+	int32_t pitch;
+	int32_t priority;
+	int32_t usefulness;
 } SoundInstruction;
 
 typedef enum MusicInstructionType {
-	MUSIC_INSTRUCTION_TYPE_EMPTY
+	MUSIC_INSTRUCTION_TYPE_EMPTY,
+	MUSIC_INSTRUCTION_TYPE_INIT,
+	MUSIC_INSTRUCTION_TYPE_SHUTDOWN,
+	MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME,
+	MUSIC_INSTRUCTION_TYPE_PAUSE_SONG,
+	MUSIC_INSTRUCTION_TYPE_RESUME_SONG,
+	MUSIC_INSTRUCTION_TYPE_REGISTER_SONG,
+	MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG,
+	MUSIC_INSTRUCTION_TYPE_PLAY_SONG,
+	MUSIC_INSTRUCTION_TYPE_STOP_SONG,
 } MusicInstructionType;
 
 typedef struct MusicInstruction {
 	MusicInstructionType type;
+	char lump_sha1[20];
+	int32_t volume;
 } MusicInstruction;
 
 typedef struct SharedMemory {
