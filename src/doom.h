@@ -63,6 +63,7 @@ private:
 	bool midi_fetch_complete = false;
 
 	Ref<Thread> doom_thread = nullptr;
+	Ref<Thread> midi_thread = nullptr;
 	Ref<Thread> wad_thread = nullptr;
 	Ref<Thread> sound_fetching_thread = nullptr;
 	Ref<Thread> midi_fetching_thread = nullptr;
@@ -93,6 +94,7 @@ private:
 	void wad_thread_func();
 	void sound_fetching_thread_func();
 	void midi_fetching_thread_func();
+	void midi_thread_func();
 
 	void append_sounds();
 	void append_music();

@@ -23,6 +23,7 @@
 #include "godot_cpp/core/memory.hpp"
 #include "godot_cpp/core/object.hpp"
 #include "godot_cpp/core/property_info.hpp"
+#include "godot_cpp/variant/callable.hpp"
 #include "godot_cpp/variant/packed_byte_array.hpp"
 #include "godot_cpp/variant/packed_int32_array.hpp"
 #include "godot_cpp/variant/string.hpp"
@@ -68,6 +69,7 @@ void DOOM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("wad_thread_func"), &DOOM::wad_thread_func);
 	ClassDB::bind_method(D_METHOD("sound_fetching_thread_func"), &DOOM::sound_fetching_thread_func);
 	ClassDB::bind_method(D_METHOD("midi_fetching_thread_func"), &DOOM::midi_fetching_thread_func);
+	ClassDB::bind_method(D_METHOD("midi_thread_func"), &DOOM::midi_thread_func);
 	ClassDB::bind_method(D_METHOD("import_assets"), &DOOM::import_assets);
 	ClassDB::bind_method(D_METHOD("wad_thread_end"), &DOOM::wad_thread_end);
 	ClassDB::bind_method(D_METHOD("sound_fetching_thread_end"), &DOOM::sound_fetching_thread_end);
@@ -175,11 +177,13 @@ void DOOM::init_doom() {
 		launch_doom_executable();
 	}
 
-	wad_thread.instantiate();
 	doom_thread.instantiate();
+	midi_thread.instantiate();
 
 	Callable doom_func = Callable(this, "doom_thread_func");
 	doom_thread->start(doom_func);
+	Callable midi_func = Callable(this, "midi_thread_func");
+	midi_thread->start(midi_func);
 }
 
 void DOOM::launch_doom_executable() {
@@ -201,6 +205,9 @@ void DOOM::launch_doom_executable() {
 	};
 
 	execve(args[0], args, envp);
+}
+
+void DOOM::midi_thread_func() {
 }
 
 void DOOM::wad_thread_func() {
@@ -240,6 +247,16 @@ void DOOM::wad_thread_func() {
 
 		Dictionary info;
 		info["data"] = file_array;
+
+		if (file_array.size() > 0) {
+			Ref<HashingContext> hashing_context;
+			hashing_context.instantiate();
+			hashing_context->start(HashingContext::HASH_SHA1);
+			hashing_context->update(file_array);
+			info["sha1"] = hashing_context->finish().hex_encode();
+		} else {
+			info["sha1"] = Variant();
+		}
 
 		files[file_entry.name] = info;
 	}
@@ -359,84 +376,84 @@ void DOOM::midi_fetching_thread_func() {
 		mid->close();
 
 		// Midi rendering
-		settings = new_fluid_settings();
-		fluid_settings_setstr(settings, "audio.file.name", wav_file_path_globalized_char);
-		fluid_settings_setstr(settings, "audio.file.type", "auto");
-		fluid_settings_setstr(settings, "player.timing-source", "sample");
-		fluid_settings_setint(settings, "synth.lock-memory", 0);
-		fluid_settings_setint(settings, "player.reset-synth", false);
+		// settings = new_fluid_settings();
+		// fluid_settings_setstr(settings, "audio.file.name", wav_file_path_globalized_char);
+		// fluid_settings_setstr(settings, "audio.file.type", "auto");
+		// fluid_settings_setstr(settings, "player.timing-source", "sample");
+		// fluid_settings_setint(settings, "synth.lock-memory", 0);
+		// fluid_settings_setint(settings, "player.reset-synth", false);
 
-		synth = new_fluid_synth(settings);
-		int synth_id = fluid_synth_sfload(synth, soundfont_global_path_char, false);
+		// synth = new_fluid_synth(settings);
+		// int synth_id = fluid_synth_sfload(synth, soundfont_global_path_char, false);
 
-		player = new_fluid_player(synth);
-		fluid_player_add(player, midi_file_path_globalized_char);
-		fluid_player_play(player);
+		// player = new_fluid_player(synth);
+		// fluid_player_add(player, midi_file_path_globalized_char);
+		// fluid_player_play(player);
 
-		renderer = new_fluid_file_renderer(synth);
+		// renderer = new_fluid_file_renderer(synth);
 
-		while (fluid_player_get_status(player) == FLUID_PLAYER_PLAYING) {
-			if (fluid_file_renderer_process_block(renderer) != FLUID_OK) {
-				break;
-			}
-		}
+		// while (fluid_player_get_status(player) == FLUID_PLAYER_PLAYING) {
+		// 	if (fluid_file_renderer_process_block(renderer) != FLUID_OK) {
+		// 		break;
+		// 	}
+		// }
 
-		fluid_player_stop(player);
-		fluid_player_join(player);
+		// fluid_player_stop(player);
+		// fluid_player_join(player);
 
-		delete_fluid_file_renderer(renderer);
+		// delete_fluid_file_renderer(renderer);
 
-		delete_fluid_player(player);
+		// delete_fluid_player(player);
 
-		fluid_synth_sfunload(synth, synth_id, false);
-		delete_fluid_synth(synth);
+		// fluid_synth_sfunload(synth, synth_id, false);
+		// delete_fluid_synth(synth);
 
-		delete_fluid_settings(settings);
+		// delete_fluid_settings(settings);
 	}
 
 	// Resource creation loop
-	for (int i = 0; i < keys.size(); i++) {
-		String key = keys[i];
-		if (!key.begins_with("D_")) {
-			continue;
-		}
+	// for (int i = 0; i < keys.size(); i++) {
+	// 	String key = keys[i];
+	// 	if (!key.begins_with("D_")) {
+	// 		continue;
+	// 	}
 
-		Dictionary info = files[key];
-		PackedByteArray data = info["data"];
+	// 	Dictionary info = files[key];
+	// 	PackedByteArray data = info["data"];
 
-		String hash_dir = vformat("user://godot-doom/%s-%s", wad_path.get_file().get_basename(), wad_hash);
-		String midi_file_name = vformat("%s.mid", key);
-		String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
-		String wav_file_name = vformat("%s.wav", key);
-		String wav_file_path = vformat("%s/%s", hash_dir, wav_file_name);
+	// 	String hash_dir = vformat("user://godot-doom/%s-%s", wad_path.get_file().get_basename(), wad_hash);
+	// 	String midi_file_name = vformat("%s.mid", key);
+	// 	String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
+	// 	String wav_file_name = vformat("%s.wav", key);
+	// 	String wav_file_path = vformat("%s/%s", hash_dir, wav_file_name);
 
-		Ref<FileAccess> wav_file = FileAccess::open(wav_file_path, FileAccess::ModeFlags::READ);
-		Ref<AudioStreamWAV> wav;
-		wav.instantiate();
+	// 	Ref<FileAccess> wav_file = FileAccess::open(wav_file_path, FileAccess::ModeFlags::READ);
+	// 	Ref<AudioStreamWAV> wav;
+	// 	wav.instantiate();
 
-		PackedByteArray samples;
-		constexpr int SAMPLE_SIZE = 1024;
-		for (int i = 0; i < wav_file->get_length(); i += SAMPLE_SIZE) {
-			int buffer_length = i + SAMPLE_SIZE > wav_file->get_length() ? wav_file->get_length() - i : SAMPLE_SIZE;
-			samples.append_array(wav_file->get_buffer(buffer_length));
-		}
-		wav->set_data(samples);
-		wav->set_stereo(true);
-		wav->set_format(AudioStreamWAV::Format::FORMAT_16_BITS);
+	// 	PackedByteArray samples;
+	// 	constexpr int SAMPLE_SIZE = 1024;
+	// 	for (int i = 0; i < wav_file->get_length(); i += SAMPLE_SIZE) {
+	// 		int buffer_length = i + SAMPLE_SIZE > wav_file->get_length() ? wav_file->get_length() - i : SAMPLE_SIZE;
+	// 		samples.append_array(wav_file->get_buffer(buffer_length));
+	// 	}
+	// 	wav->set_data(samples);
+	// 	wav->set_stereo(true);
+	// 	wav->set_format(AudioStreamWAV::Format::FORMAT_16_BITS);
 
-		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
-		player->set_name(key);
-		player->set_stream(wav);
+	// 	AudioStreamPlayer *player = memnew(AudioStreamPlayer);
+	// 	player->set_name(key);
+	// 	player->set_stream(wav);
 
-		Ref<HashingContext> hashing_context;
-		hashing_context.instantiate();
-		hashing_context->start(HashingContext::HashType::HASH_SHA1);
-		hashing_context->update(data);
-		PackedByteArray hash = hashing_context->finish();
-		player->set_meta("sha1_mus", hash.hex_encode());
+	// 	Ref<HashingContext> hashing_context;
+	// 	hashing_context.instantiate();
+	// 	hashing_context->start(HashingContext::HashType::HASH_SHA1);
+	// 	hashing_context->update(data);
+	// 	PackedByteArray hash = hashing_context->finish();
+	// 	player->set_meta("sha1_mus", hash.hex_encode());
 
-		info["player"] = player;
-	}
+	// 	info["player"] = player;
+	// }
 
 	call_deferred("midi_fetching_thread_end");
 }
@@ -531,7 +548,7 @@ void DOOM::midi_fetching_thread_end() {
 		sound_fetching_thread->wait_to_finish();
 	}
 
-	append_music();
+	// append_music();
 
 	midi_fetch_complete = true;
 	update_assets_status();
