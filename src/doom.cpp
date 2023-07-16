@@ -519,41 +519,41 @@ void DOOM::midi_fetching_thread_func() {
 }
 
 void DOOM::append_sounds() {
-	SubViewportContainer *sound_subviewportcontainer = (SubViewportContainer *)get_node_or_null("SoundSubviewportContainer");
+	SubViewportContainer *sound_subviewportcontainer = (SubViewportContainer *)get_node_or_null("SoundSubViewportContainer");
 	if (sound_subviewportcontainer != nullptr) {
 		sound_subviewportcontainer->set_name("tobedeleted");
 		sound_subviewportcontainer->queue_free();
 	}
 	sound_subviewportcontainer = memnew(SubViewportContainer);
 	sound_subviewportcontainer->set_visible(false);
-	sound_subviewportcontainer->set_name("SoundSubviewportContainer");
-	add_child(sound_subviewportcontainer);
-	sound_subviewportcontainer->set_owner(get_tree()->get_edited_scene_root());
+	sound_subviewportcontainer->set_name("SoundSubViewportContainer");
+	call_deferred("add_child", sound_subviewportcontainer);
+	// sound_subviewportcontainer->set_owner(get_tree()->get_edited_scene_root());
 
-	SubViewport *sound_subviewport = (SubViewport *)get_node_or_null("SoundSubviewport");
+	SubViewport *sound_subviewport = (SubViewport *)get_node_or_null("SoundSubViewport");
 	if (sound_subviewport != nullptr) {
 		sound_subviewport->set_name("tobedeleted");
 		sound_subviewport->queue_free();
 	}
 	sound_subviewport = memnew(SubViewport);
 	sound_subviewport->set_as_audio_listener_2d(true);
-	sound_subviewport->set_name("SoundSubviewport");
+	sound_subviewport->set_name("SoundSubViewport");
 	sound_subviewport->set_size(Vector2(SOUND_SUBVIEWPORT_SIZE, SOUND_SUBVIEWPORT_SIZE));
 	sound_subviewportcontainer->add_child(sound_subviewport);
-	sound_subviewport->set_owner(get_tree()->get_edited_scene_root());
+	// sound_subviewport->set_owner(get_tree()->get_edited_scene_root());
 
 	Camera2D *camera = memnew(Camera2D);
 	camera->set_name("Camera2D");
 	sound_subviewport->add_child(camera);
-	camera->set_owner(get_tree()->get_edited_scene_root());
+	// camera->set_owner(get_tree()->get_edited_scene_root());
 
 	for (int i = 0; i < 16; i++) {
 		AudioStreamPlayer2D *player = memnew(AudioStreamPlayer2D);
 		player->set_position(Vector2(0, 0));
 		sound_subviewport->add_child(player);
-		player->set_owner(get_tree()->get_edited_scene_root());
 		player->set_name(vformat("Channel%s", i));
 		player->set_bus("SFX");
+		// player->set_owner(get_tree()->get_edited_scene_root());
 	}
 
 	Node *sound_container = get_node_or_null("SoundContainer");
@@ -562,9 +562,9 @@ void DOOM::append_sounds() {
 		sound_container->queue_free();
 	}
 	sound_container = memnew(Node);
-	add_child(sound_container);
-	sound_container->set_owner(get_tree()->get_edited_scene_root());
+	call_deferred("add_child", sound_container);
 	sound_container->set_name("SoundContainer");
+	// sound_container->set_owner(get_tree()->get_edited_scene_root());
 
 	Array keys = files.keys();
 	for (int i = 0; i < keys.size(); i++) {
@@ -575,7 +575,7 @@ void DOOM::append_sounds() {
 		Dictionary info = files[key];
 		AudioStreamPlayer *player = reinterpret_cast<AudioStreamPlayer *>((Object *)info["player"]);
 		sound_container->add_child(player);
-		player->set_owner(get_tree()->get_edited_scene_root());
+		// player->set_owner(get_tree()->get_edited_scene_root());
 	}
 }
 
@@ -586,26 +586,25 @@ void DOOM::append_music() {
 		music_container->queue_free();
 	}
 	music_container = memnew(Node);
-	add_child(music_container);
-	music_container->set_owner(get_tree()->get_edited_scene_root());
+	call_deferred("add_child", music_container);
 	music_container->set_name("MusicContainer");
+	// music_container->set_owner(get_tree()->get_edited_scene_root());
 
 	AudioStreamPlayer *player = memnew(AudioStreamPlayer);
 	music_container->add_child(player);
-	player->set_owner(get_tree()->get_edited_scene_root());
 	player->set_name("Player");
 	player->set_bus("Music");
+	// player->set_owner(get_tree()->get_edited_scene_root());
 
 	Ref<AudioStreamGenerator> stream;
 	stream.instantiate();
 	stream->set_buffer_length(0.05);
 	current_midi_stream = stream;
 	player->set_stream(current_midi_stream);
-	player->play();
+	player->call_deferred("play");
 }
 
 void DOOM::wad_thread_end() {
-	UtilityFunctions::print(vformat("wad_thread_end"));
 	if (wad_thread->is_alive()) {
 		wad_thread->wait_to_finish();
 	}
@@ -615,7 +614,6 @@ void DOOM::wad_thread_end() {
 }
 
 void DOOM::sound_fetching_thread_end() {
-	UtilityFunctions::print(vformat("sound_fetching_thread_end"));
 	if (sound_fetching_thread->is_alive()) {
 		sound_fetching_thread->wait_to_finish();
 	}
@@ -627,7 +625,6 @@ void DOOM::sound_fetching_thread_end() {
 }
 
 void DOOM::midi_fetching_thread_end() {
-	UtilityFunctions::print(vformat("midi_fetching_thread_end"));
 	if (sound_fetching_thread->is_alive()) {
 		sound_fetching_thread->wait_to_finish();
 	}
@@ -710,19 +707,15 @@ void DOOM::update_sounds() {
 			case SOUND_INSTRUCTION_TYPE_START_SOUND: {
 				String name = vformat("DS%s", String(instruction.name).to_upper());
 				AudioStreamPlayer *source = (AudioStreamPlayer *)sound_container->get_node_or_null(name);
-				String channel_name = vformat("SoundSubviewportContainer/SoundSubviewport/Channel%s", instruction.channel);
+				String channel_name = vformat("SoundSubViewportContainer/SoundSubViewport/Channel%s", instruction.channel);
 				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)get_node_or_null(channel_name);
 
 				if (source == nullptr || channel == nullptr) {
-					UtilityFunctions::print(vformat("skipping channel %s", channel_name));
 					continue;
 				}
 
-				UtilityFunctions::print(vformat("%s sep: %x", name, instruction.sep));
-
 				channel->stop();
 				channel->set_stream(source->get_stream());
-				UtilityFunctions::print(vformat("channel %s stream: %s (source's: %s, %s)", channel_name, channel->get_stream(), source->get_stream(), source));
 				// squatting_sound->set_pitch_scale(
 				// 		UtilityFunctions::remap(instruction.pitch, 0, INT8_MAX, 0, 2));
 				channel->set_volume_db(
@@ -738,7 +731,8 @@ void DOOM::update_sounds() {
 			} break;
 
 			case SOUND_INSTRUCTION_TYPE_STOP_SOUND: {
-				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)sound_container->get_node_or_null(vformat("Channel%s", instruction.channel));
+				String channel_name = vformat("SoundSubViewportContainer/SoundSubViewport/Channel%s", instruction.channel);
+				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)get_node_or_null(channel_name);
 				if (channel == nullptr) {
 					continue;
 				}
@@ -747,7 +741,8 @@ void DOOM::update_sounds() {
 			} break;
 
 			case SOUND_INSTRUCTION_TYPE_UPDATE_SOUND_PARAMS: {
-				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)sound_container->get_node_or_null(vformat("Channel%s", instruction.channel));
+				String channel_name = vformat("SoundSubViewportContainer/SoundSubViewport/Channel%s", instruction.channel);
+				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)get_node_or_null(channel_name);
 				if (channel == nullptr) {
 					continue;
 				}
@@ -820,13 +815,13 @@ void DOOM::_exit_tree() {
 
 void DOOM::doom_thread_func() {
 	while (true) {
-		if (this->exiting) {
+		if (exiting) {
 			return;
 		}
 
 		// Send the tick signal
-		while (!this->shm->init) {
-			if (this->exiting) {
+		while (!shm->init) {
+			if (exiting) {
 				return;
 			}
 			OS::get_singleton()->delay_msec(10);
@@ -836,14 +831,14 @@ void DOOM::doom_thread_func() {
 		shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
 		// // Let's wait for the shared memory to be ready
-		while (!this->shm->ready) {
-			if (this->exiting) {
+		while (!shm->ready) {
+			if (exiting) {
 				return;
 			}
 			OS::get_singleton()->delay_msec(10);
 		}
 
-		if (this->exiting) {
+		if (exiting) {
 			return;
 		}
 		// The shared memory is ready
@@ -864,11 +859,16 @@ void DOOM::doom_thread_func() {
 		shm->music_instructions_length = 0;
 
 		// Let's sleep the time Doom asks
-		usleep(this->shm->sleep_ms * 1000);
+		usleep(shm->sleep_ms * 1000);
 
 		// Reset the shared memory
-		this->shm->ready = false;
+		shm->ready = false;
 
+		if (exiting) {
+			return;
+		}
+
+		// Parse music instructions already, sooner the better
 		for (MusicInstruction instruction : music_instructions) {
 			switch (instruction.type) {
 				case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
