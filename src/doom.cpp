@@ -223,7 +223,7 @@ void DOOM::midi_thread_func() {
 		}
 
 		if (current_midi_path.is_empty() || !current_midi_playing || current_midi_pause) {
-			usleep(1000);
+			usleep(10);
 			continue;
 		}
 
@@ -241,13 +241,14 @@ void DOOM::midi_thread_func() {
 		settings = new_fluid_settings();
 		// fluid_settings_setint(settings, "player.reset-synth", false);
 		// fluid_settings_setstr(settings, "player.timing-source", "sample");
+		fluid_settings_setstr(settings, "player.timing-source", "system");
 
 		synth = new_fluid_synth(settings);
 		fluid_synth_set_gain(synth, 1.0f);
 
 		if (!fluid_is_soundfont(soundfont_global_path_char)) {
 			soundfont_path = "";
-			usleep(1000);
+			usleep(10);
 			continue;
 		}
 
@@ -258,7 +259,7 @@ void DOOM::midi_thread_func() {
 
 		if (!fluid_is_midifile(current_midi_global_path_char)) {
 			current_midi_path = "";
-			usleep(1000);
+			usleep(10);
 			continue;
 		}
 
@@ -267,6 +268,8 @@ void DOOM::midi_thread_func() {
 		fluid_player_play(player);
 
 		current_midi_last_tick = Time::get_singleton()->get_ticks_usec();
+
+		String playing_path = current_midi_path;
 
 		while (fluid_player_get_status(player) == FLUID_PLAYER_PLAYING) {
 			// UtilityFunctions::print("PLAYING");
@@ -282,29 +285,39 @@ void DOOM::midi_thread_func() {
 			}
 
 			if (current_midi_pause) {
+				UtilityFunctions::print(vformat("current_midi_pause"));
 				current_midi_tick = fluid_player_get_current_tick(player);
 				fluid_player_stop(player);
+				break;
 			}
 
 			if (!current_midi_playing) {
+				UtilityFunctions::print(vformat("!current_midi_playing"));
 				current_midi_tick = 0;
 				fluid_player_stop(player);
+				break;
+			}
+
+			if (current_midi_path != playing_path) {
+				UtilityFunctions::print(vformat("current_midi_path != playing_path"));
+				current_midi_tick = 0;
+				fluid_player_stop(player);
+				break;
 			}
 
 			if (current_midi_playback.is_null()) {
 				continue;
 			}
 
-			usleep(100);
+			usleep(10);
 
 			uint64_t ticks = Time::get_singleton()->get_ticks_usec();
 			uint64_t diff = ticks - current_midi_last_tick;
 
-			uint32_t len_asked = current_midi_stream->get_mix_rate() / 100000 * diff;
+			uint32_t len_asked = current_midi_stream->get_mix_rate() / 1000 * diff / 10;
 
 			current_midi_last_tick = ticks;
 
-			// uint32_t len_asked = current_midi_playback->get_frames_available();
 			// UtilityFunctions::print(vformat("len asked: %s, avail: %s", len_asked, current_midi_playback->get_frames_available()));
 
 			if (current_midi_playback->get_frames_available() < len_asked) {
@@ -317,38 +330,19 @@ void DOOM::midi_thread_func() {
 
 			float bufl[len_asked], bufr[len_asked];
 
-			// float *buf = (float *)malloc(sizeof(float) * 2 * len_asked);
-			// if (buf == nullptr) {
-			// 	continue;
-			// }
-
-			// memset(buf, 0, sizeof(float) * 2 * len_asked);
-
 			if (fluid_synth_write_float(synth, len_asked, bufl, 0, 1, bufr, 0, 1) == FLUID_FAILED) {
 				break;
 			}
 
 			PackedVector2Array frames;
 			for (int i = 0; i < len_asked; i++) {
-				// current_midi_playback->push_frame(Vector2(current_midi_buffer[i], current_midi_buffer[i + 1]));
 				frames.append(Vector2(bufl[i], bufr[i]));
 			}
-
-			// memfree(buf);
 
 			current_midi_playback->push_buffer(frames);
 			frames.clear();
 
-			// memfree(buf);
-
-			// current_midi_frames.append_array(frames);
-
 			len_asked = 0;
-
-			// if (current_midi_playback->can_push_buffer(current_midi_frames.size())) {
-			// 	// UtilityFunctions::print(vformat("push %s", current_midi_frames.size()));
-			// 	current_midi_playback->push_buffer(current_midi_frames);
-			// }
 		}
 
 		fluid_player_stop(player);
@@ -803,102 +797,14 @@ void DOOM::update_music() {
 		return;
 	}
 
-	for (MusicInstruction instruction : music_instructions) {
-		switch (instruction.type) {
-			case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
-				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_REGISTER_SONG"));
-
-				String sha1;
-				String midi_file;
-
-				for (int i = 0; i < sizeof(instruction.lump_sha1_hex); i += sizeof(instruction.lump_sha1_hex[0])) {
-					sha1 += vformat("%c", instruction.lump_sha1_hex[i]);
-				}
-
-				UtilityFunctions::print(vformat("sha1 of received instruction: %s", sha1));
-
-				Array keys = files.keys();
-				for (int i = 0; i < keys.size(); i++) {
-					String key = keys[i];
-					if (!key.begins_with("D_")) {
-						continue;
-					}
-
-					Dictionary info = files[key];
-					UtilityFunctions::print(vformat("Comparing with %s (%s)", key, info["sha1"]));
-					if (sha1.to_lower() == String(info["sha1"]).to_lower()) {
-						midi_file = key;
-						break;
-					}
-				}
-
-				if (midi_file.is_empty()) {
-					break;
-				}
-
-				current_midi_path = vformat("user://godot-doom/%s-%s/%s.mid", wad_path.get_file().get_basename(), wad_hash, midi_file);
-			} break;
-
-			case MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG: {
-				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG"));
-				current_midi_path = "";
-			} break;
-
-			case MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
-				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PLAY_SONG"));
-				current_midi_looping = instruction.looping;
-				current_midi_playing = true;
-			} break;
-
-			case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
-				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_STOP_SONG"));
-				current_midi_playing = false;
-			} break;
-
-			case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
-				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PAUSE_SONG"));
-				current_midi_pause = true;
-			} break;
-
-			case MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
-				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_RESUME_SONG"));
-				current_midi_pause = false;
-			} break;
-
-			case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC: {
-				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC"));
-				current_midi_playing = false;
-			} break;
-
-			case MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {
-				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME"));
-				current_midi_volume = instruction.volume;
-			} break;
-
-			case MusicInstructionType::MUSIC_INSTRUCTION_TYPE_EMPTY:
-			default: {
-			}
-		}
+	if (!player->is_playing()) {
+		player->play();
 	}
-	music_instructions.clear();
-
-	player->play();
 	Ref<AudioStreamGeneratorPlayback> playback = player->get_stream_playback();
 	if (playback.is_null()) {
 		return;
 	}
-
 	current_midi_playback = playback;
-
-	// if (current_midi_frames.size() > 0) {
-	// 	if (playback->can_push_buffer(current_midi_frames.size())) {
-	// 		UtilityFunctions::print(vformat("push %s", current_midi_frames.size()));
-	// 		playback->push_buffer(current_midi_frames);
-	// 		current_midi_frames.clear();
-	// 	}
-	// }
-
-	// len_asked = playback->get_frames_available();
 }
 
 void DOOM::_ready() {
@@ -966,6 +872,86 @@ void DOOM::doom_thread_func() {
 
 		// Reset the shared memory
 		this->shm->ready = false;
+
+		for (MusicInstruction instruction : music_instructions) {
+			switch (instruction.type) {
+				case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_REGISTER_SONG"));
+
+					String sha1;
+					String midi_file;
+
+					for (int i = 0; i < sizeof(instruction.lump_sha1_hex); i += sizeof(instruction.lump_sha1_hex[0])) {
+						sha1 += vformat("%c", instruction.lump_sha1_hex[i]);
+					}
+
+					UtilityFunctions::print(vformat("sha1 of received instruction: %s", sha1));
+
+					Array keys = files.keys();
+					for (int i = 0; i < keys.size(); i++) {
+						String key = keys[i];
+						if (!key.begins_with("D_")) {
+							continue;
+						}
+
+						Dictionary info = files[key];
+						UtilityFunctions::print(vformat("Comparing with %s (%s)", key, info["sha1"]));
+						if (sha1.to_lower() == String(info["sha1"]).to_lower()) {
+							midi_file = key;
+							break;
+						}
+					}
+
+					if (midi_file.is_empty()) {
+						break;
+					}
+
+					current_midi_path = vformat("user://godot-doom/%s-%s/%s.mid", wad_path.get_file().get_basename(), wad_hash, midi_file);
+				} break;
+
+				case MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG: {
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG"));
+					current_midi_path = "";
+				} break;
+
+				case MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PLAY_SONG"));
+					current_midi_looping = instruction.looping;
+					current_midi_playing = true;
+					current_midi_pause = false;
+				} break;
+
+				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_STOP_SONG"));
+					current_midi_playing = false;
+				} break;
+
+				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PAUSE_SONG"));
+					current_midi_pause = true;
+				} break;
+
+				case MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_RESUME_SONG"));
+					current_midi_pause = false;
+				} break;
+
+				case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC: {
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC"));
+					current_midi_playing = false;
+				} break;
+
+				case MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME"));
+					current_midi_volume = instruction.volume;
+				} break;
+
+				case MusicInstructionType::MUSIC_INSTRUCTION_TYPE_EMPTY:
+				default: {
+				}
+			}
+		}
+		music_instructions.clear();
 	}
 }
 
