@@ -253,11 +253,13 @@ void DOOM::midi_thread_func() {
 			return;
 		}
 
+		mutex->lock();
 		if (current_midi_path.is_empty() || !current_midi_playing || current_midi_pause) {
 			mutex->unlock();
 			OS::get_singleton()->delay_usec(10);
 			continue;
 		}
+		mutex->unlock();
 
 		fluid_settings_t *settings;
 		fluid_synth_t *synth;
