@@ -98,7 +98,16 @@ void DG_Init() {
 }
 
 void DG_DrawFrame() {
-	memcpy(shm->screen_buffer, DG_ScreenBuffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
+	unsigned char screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA];
+	memcpy(screen_buffer, DG_ScreenBuffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA);
+	unsigned char buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA];
+	for (int i = 0; i < DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA; i += RGBA) {
+		buffer[i + 0] = screen_buffer[i + 2];
+		buffer[i + 1] = screen_buffer[i + 1];
+		buffer[i + 2] = screen_buffer[i + 0];
+		buffer[i + 3] = 255 - screen_buffer[i + 3];
+	}
+	memcpy(shm->screen_buffer, buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA);
 }
 
 void DG_SleepMs(uint32_t ms) {

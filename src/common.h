@@ -9,6 +9,7 @@
 
 #define GODOT_DOOM_SHM_NAME "/doom"
 #define GODOT_DOOM_SPAWN_SHM_ID GODOT_DOOM_SHM_NAME "000000"
+#define RGBA 4
 
 typedef enum SoundInstructionType {
 	SOUND_INSTRUCTION_TYPE_EMPTY,

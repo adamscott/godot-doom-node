@@ -184,6 +184,8 @@ void DOOM::init_doom() {
 		launch_doom_executable();
 	}
 
+	screen_buffer_array.resize(sizeof(screen_buffer));
+
 	doom_thread.instantiate();
 	midi_thread.instantiate();
 
@@ -744,16 +746,7 @@ void DOOM::_process(double delta) {
 }
 
 void DOOM::update_screen_buffer() {
-	screen_buffer_array.resize(sizeof(screen_buffer));
-	screen_buffer_array.clear();
-
-	for (int i = 0; i < DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4; i += 4) {
-		// screen_buffer_array.insert(i, screen_buffer[i]);
-		screen_buffer_array.insert(i, screen_buffer[i + 2]);
-		screen_buffer_array.insert(i + 1, screen_buffer[i + 1]);
-		screen_buffer_array.insert(i + 2, screen_buffer[i + 0]);
-		screen_buffer_array.insert(i + 3, 255 - screen_buffer[i + 3]);
-	}
+	memcpy(screen_buffer_array.ptrw(), screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA);
 
 	Ref<Image> image = Image::create_from_data(DOOMGENERIC_RESX, DOOMGENERIC_RESY, false, Image::Format::FORMAT_RGBA8, screen_buffer_array);
 	if (img_texture->get_image().is_null()) {
