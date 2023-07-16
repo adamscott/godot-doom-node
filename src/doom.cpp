@@ -240,6 +240,7 @@ void DOOM::midi_thread_func() {
 		}
 
 		if (current_midi_path.is_empty() || !current_midi_playing || current_midi_pause) {
+			mutex->unlock();
 			OS::get_singleton()->delay_usec(10);
 			continue;
 		}
@@ -369,9 +370,13 @@ void DOOM::midi_thread_func() {
 void DOOM::wad_thread_func() {
 	files.clear();
 
-	Ref<FileAccess> wad = FileAccess::open(wad_path, FileAccess::ModeFlags::READ);
+	mutex->lock();
+	String local_wad_path = wad_path;
+	mutex->unlock();
+
+	Ref<FileAccess> wad = FileAccess::open(local_wad_path, FileAccess::ModeFlags::READ);
 	if (wad.is_null()) {
-		UtilityFunctions::printerr(vformat("Could not open \"%s\"", wad_path));
+		UtilityFunctions::printerr(vformat("Could not open \"%s\"", local_wad_path));
 		return;
 	}
 
@@ -427,19 +432,26 @@ void DOOM::wad_thread_func() {
 	}
 	wad->close();
 	PackedByteArray hash = hashing_context->finish();
+
+	mutex->lock();
 	wad_hash = hash.hex_encode();
+	mutex->unlock();
 
 	call_deferred("wad_thread_end");
 }
 
 void DOOM::sound_fetching_thread_func() {
+	mutex->lock();
 	Array keys = files.keys();
+	mutex->unlock();
 	for (int i = 0; i < keys.size(); i++) {
 		String key = keys[i];
 		if (!key.begins_with("DS")) {
 			continue;
 		}
+		mutex->lock();
 		Dictionary info = files[key];
+		mutex->unlock();
 		PackedByteArray file_array = info["data"];
 
 		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
@@ -472,7 +484,9 @@ void DOOM::midi_fetching_thread_func() {
 		return;
 	}
 
+	mutex->lock();
 	Array keys = files.keys();
+	mutex->unlock();
 
 	// Rendering loop
 	for (int i = 0; i < keys.size(); i++) {
@@ -481,11 +495,17 @@ void DOOM::midi_fetching_thread_func() {
 			continue;
 		}
 
+		mutex->lock();
 		Dictionary info = files[key];
+		mutex->unlock();
+
 		PackedByteArray file_array = info["data"];
 		PackedByteArray midi_output;
 
+		mutex->lock();
 		String hash_dir = vformat("user://godot-doom/%s-%s", wad_path.get_file().get_basename(), wad_hash);
+		mutex->unlock();
+
 		String midi_file_name = vformat("%s.mid", key);
 		String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
 		String wav_file_name = vformat("%s.wav", key);
@@ -576,13 +596,20 @@ void DOOM::append_sounds() {
 	sound_container->set_name("SoundContainer");
 	// sound_container->set_owner(get_tree()->get_edited_scene_root());
 
+	mutex->lock();
 	Array keys = files.keys();
+	mutex->unlock();
+
 	for (int i = 0; i < keys.size(); i++) {
 		String key = keys[i];
 		if (!key.begins_with("DS")) {
 			continue;
 		}
+
+		mutex->lock();
 		Dictionary info = files[key];
+		mutex->unlock();
+
 		AudioStreamPlayer *player = reinterpret_cast<AudioStreamPlayer *>((Object *)info["player"]);
 		sound_container->add_child(player);
 		// player->set_owner(get_tree()->get_edited_scene_root());
@@ -973,6 +1000,7 @@ void DOOM::init_shm() {
 
 DOOM::DOOM() {
 	spawn_pid = 0;
+	mutex.instantiate();
 }
 
 DOOM::~DOOM() {

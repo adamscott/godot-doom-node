@@ -9,6 +9,7 @@
 #include "godot_cpp/classes/audio_stream_player.hpp"
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/image_texture.hpp"
+#include "godot_cpp/classes/mutex.hpp"
 #include "godot_cpp/classes/texture_rect.hpp"
 #include "godot_cpp/classes/thread.hpp"
 #include "godot_cpp/classes/wrapped.hpp"
@@ -64,6 +65,7 @@ private:
 	bool sound_fetch_complete = false;
 	bool midi_fetch_complete = false;
 
+	Ref<Mutex> mutex;
 	Ref<Thread> doom_thread = nullptr;
 	Ref<Thread> midi_thread = nullptr;
 	Ref<Thread> wad_thread = nullptr;
