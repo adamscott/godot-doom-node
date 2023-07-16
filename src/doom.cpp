@@ -1,6 +1,7 @@
 #include "doom.h"
 
 #include <signal.h>
+#include <stdint.h>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -10,7 +11,9 @@
 #include "godot_cpp/classes/audio_stream_generator.hpp"
 #include "godot_cpp/classes/audio_stream_generator_playback.hpp"
 #include "godot_cpp/classes/audio_stream_player.hpp"
+#include "godot_cpp/classes/audio_stream_player2d.hpp"
 #include "godot_cpp/classes/audio_stream_wav.hpp"
+#include "godot_cpp/classes/camera2d.hpp"
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/dir_access.hpp"
 #include "godot_cpp/classes/file_access.hpp"
@@ -21,6 +24,8 @@
 #include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/classes/project_settings.hpp"
 #include "godot_cpp/classes/scene_tree.hpp"
+#include "godot_cpp/classes/sub_viewport.hpp"
+#include "godot_cpp/classes/sub_viewport_container.hpp"
 #include "godot_cpp/classes/texture_rect.hpp"
 #include "godot_cpp/classes/thread.hpp"
 #include "godot_cpp/classes/time.hpp"
@@ -65,6 +70,8 @@ extern "C" {
 #include "fluidsynth/synth.h"
 #include "fluidsynth/types.h"
 }
+
+#define SOUND_SUBVIEWPORT_SIZE 512
 
 using namespace godot;
 
@@ -599,6 +606,43 @@ void DOOM::midi_fetching_thread_func() {
 }
 
 void DOOM::append_sounds() {
+	SubViewportContainer *sound_subviewportcontainer = (SubViewportContainer *)get_node_or_null("SoundSubviewportContainer");
+	if (sound_subviewportcontainer != nullptr) {
+		sound_subviewportcontainer->set_name("tobedeleted");
+		sound_subviewportcontainer->queue_free();
+	}
+	sound_subviewportcontainer = memnew(SubViewportContainer);
+	sound_subviewportcontainer->set_visible(false);
+	sound_subviewportcontainer->set_name("SoundSubviewportContainer");
+	add_child(sound_subviewportcontainer);
+	sound_subviewportcontainer->set_owner(get_tree()->get_edited_scene_root());
+
+	SubViewport *sound_subviewport = (SubViewport *)get_node_or_null("SoundSubviewport");
+	if (sound_subviewport != nullptr) {
+		sound_subviewport->set_name("tobedeleted");
+		sound_subviewport->queue_free();
+	}
+	sound_subviewport = memnew(SubViewport);
+	sound_subviewport->set_as_audio_listener_2d(true);
+	sound_subviewport->set_name("SoundSubviewport");
+	sound_subviewport->set_size(Vector2(SOUND_SUBVIEWPORT_SIZE, SOUND_SUBVIEWPORT_SIZE));
+	sound_subviewportcontainer->add_child(sound_subviewport);
+	sound_subviewport->set_owner(get_tree()->get_edited_scene_root());
+
+	Camera2D *camera = memnew(Camera2D);
+	camera->set_name("Camera2D");
+	sound_subviewport->add_child(camera);
+	camera->set_owner(get_tree()->get_edited_scene_root());
+
+	for (int i = 0; i < 16; i++) {
+		AudioStreamPlayer2D *player = memnew(AudioStreamPlayer2D);
+		player->set_position(Vector2(0, 0));
+		sound_subviewport->add_child(player);
+		player->set_owner(get_tree()->get_edited_scene_root());
+		player->set_name(vformat("Channel%s", i));
+		player->set_bus("SFX");
+	}
+
 	Node *sound_container = get_node_or_null("SoundContainer");
 	if (sound_container != nullptr) {
 		sound_container->set_name("tobedeleted");
@@ -608,14 +652,6 @@ void DOOM::append_sounds() {
 	add_child(sound_container);
 	sound_container->set_owner(get_tree()->get_edited_scene_root());
 	sound_container->set_name("SoundContainer");
-
-	for (int i = 0; i < 16; i++) {
-		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
-		sound_container->add_child(player);
-		player->set_owner(get_tree()->get_edited_scene_root());
-		player->set_name(vformat("Channel%s", i));
-		player->set_bus("SFX");
-	}
 
 	Array keys = files.keys();
 	for (int i = 0; i < keys.size(); i++) {
@@ -760,25 +796,56 @@ void DOOM::update_sounds() {
 		switch (instruction.type) {
 			case SOUND_INSTRUCTION_TYPE_START_SOUND: {
 				String name = vformat("DS%s", String(instruction.name).to_upper());
-				AudioStreamPlayer *source = sound_container->get_node<AudioStreamPlayer>(name);
+				AudioStreamPlayer *source = (AudioStreamPlayer *)sound_container->get_node_or_null(name);
+				String channel_name = vformat("SoundSubviewportContainer/SoundSubviewport/Channel%s", instruction.channel);
+				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)get_node_or_null(channel_name);
 
-				if (source == nullptr) {
+				if (source == nullptr || channel == nullptr) {
+					UtilityFunctions::print(vformat("skipping channel %s", channel_name));
 					continue;
 				}
 
-				String channel_name = vformat("Channel%s", instruction.channel);
-				AudioStreamPlayer *squatting_sound = sound_container->get_node<AudioStreamPlayer>(channel_name);
+				UtilityFunctions::print(vformat("%s sep: %x", name, instruction.sep));
 
-				if (squatting_sound != nullptr) {
-					squatting_sound->stop();
-					squatting_sound->set_stream(source->get_stream());
-					// squatting_sound->set_pitch_scale(
-					// 		UtilityFunctions::remap(instruction.pitch, 0, INT8_MAX, 0, 2));
-					squatting_sound->set_volume_db(
-							UtilityFunctions::linear_to_db(
-									UtilityFunctions::remap(instruction.volume, 0.0, INT8_MAX, 0.0, 2.0)));
-					squatting_sound->play();
+				channel->stop();
+				channel->set_stream(source->get_stream());
+				UtilityFunctions::print(vformat("channel %s stream: %s (source's: %s, %s)", channel_name, channel->get_stream(), source->get_stream(), source));
+				// squatting_sound->set_pitch_scale(
+				// 		UtilityFunctions::remap(instruction.pitch, 0, INT8_MAX, 0, 2));
+				channel->set_volume_db(
+						UtilityFunctions::linear_to_db(
+								UtilityFunctions::remap(instruction.volume, 0.0, INT8_MAX, 0.0, 2.0)));
+
+				double pan = UtilityFunctions::remap(instruction.sep, 0, INT8_MAX, -1, 1);
+				channel->set_position(Vector2(
+						(SOUND_SUBVIEWPORT_SIZE / 2.0) * pan,
+						0));
+
+				channel->play();
+			} break;
+
+			case SOUND_INSTRUCTION_TYPE_STOP_SOUND: {
+				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)sound_container->get_node_or_null(vformat("Channel%s", instruction.channel));
+				if (channel == nullptr) {
+					continue;
 				}
+
+				channel->stop();
+			} break;
+
+			case SOUND_INSTRUCTION_TYPE_UPDATE_SOUND_PARAMS: {
+				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)sound_container->get_node_or_null(vformat("Channel%s", instruction.channel));
+				if (channel == nullptr) {
+					continue;
+				}
+
+				channel->set_volume_db(
+						UtilityFunctions::linear_to_db(
+								UtilityFunctions::remap(instruction.volume, 0.0, INT8_MAX, 0, 2)));
+				double pan = UtilityFunctions::remap(instruction.sep, 0, INT8_MAX, -1, 1);
+				channel->set_position(Vector2(
+						(SOUND_SUBVIEWPORT_SIZE / 2.0) * pan,
+						0));
 			} break;
 
 			case SOUND_INSTRUCTION_TYPE_EMPTY:
@@ -792,7 +859,7 @@ void DOOM::update_sounds() {
 }
 
 void DOOM::update_music() {
-	AudioStreamPlayer *player = get_node<AudioStreamPlayer>("MusicContainer/Player");
+	AudioStreamPlayer *player = (AudioStreamPlayer *)get_node_or_null("MusicContainer/Player");
 	if (player == nullptr) {
 		return;
 	}

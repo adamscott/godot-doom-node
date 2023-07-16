@@ -29,6 +29,11 @@ static snddevice_t sound_godot_devices[] = {
 	SNDDEVICE_AWE32,
 };
 
+static void add_instruction(SoundInstruction inst) {
+	shm->sound_instructions[shm->sound_instructions_length] = inst;
+	shm->sound_instructions_length++;
+}
+
 static void GetSfxLumpName(sfxinfo_t *sfx, char *buf, size_t buf_len) {
 	// Linked sfx lumps? Get the lump number for the sound linked to.
 
@@ -49,7 +54,7 @@ static void GetSfxLumpName(sfxinfo_t *sfx, char *buf, size_t buf_len) {
 // Preload all the sound effects - stops nasty ingame freezes
 
 static boolean CacheSFX(sfxinfo_t *sfxinfo) {
-	return false;
+	return true;
 }
 
 static void Godot_PrecacheSounds(sfxinfo_t *sounds, int num_sounds) {
@@ -68,8 +73,7 @@ static void Godot_PrecacheSounds(sfxinfo_t *sounds, int num_sounds) {
 		inst.priority = sound->priority;
 		inst.usefulness = sound->usefulness;
 
-		shm->sound_instructions[shm->sound_instructions_length] = inst;
-		shm->sound_instructions_length++;
+		add_instruction(inst);
 	}
 }
 
@@ -78,14 +82,16 @@ static boolean Godot_SoundIsPlaying(int handle) {
 }
 
 static void Godot_StopSound(int handle) {
-	// printf("update sound %d\n", handle);
+	SoundInstruction inst;
+	inst.type = SOUND_INSTRUCTION_TYPE_STOP_SOUND;
+	inst.channel = handle;
+
+	add_instruction(inst);
 }
 
 static int Godot_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep) {
-	// char namebuf[9];
 	SoundInstruction inst;
 	inst.type = SOUND_INSTRUCTION_TYPE_START_SOUND;
-	// GetSfxLumpName(sfxinfo, namebuf, sizeof(namebuf));
 	strcpy(inst.name, sfxinfo->name);
 	inst.channel = channel;
 	inst.volume = vol;
@@ -102,7 +108,11 @@ static int Godot_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep) {
 
 static void Godot_UpdateSoundParams(int handle, int vol, int sep) {
 	// printf("update sound %d, vol: %d\n", handle, vol);
+
 	SoundInstruction inst;
+	inst.channel = handle;
+	inst.volume = vol;
+	inst.sep = sep;
 }
 
 static void Godot_UpdateSound(void) {
