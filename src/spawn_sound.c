@@ -107,8 +107,6 @@ static int Godot_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep) {
 }
 
 static void Godot_UpdateSoundParams(int handle, int vol, int sep) {
-	// printf("update sound %d, vol: %d\n", handle, vol);
-
 	SoundInstruction inst;
 	inst.channel = handle;
 	inst.volume = vol;
@@ -116,7 +114,6 @@ static void Godot_UpdateSoundParams(int handle, int vol, int sep) {
 }
 
 static void Godot_UpdateSound(void) {
-	// printf("update sound\n");
 }
 
 static int Godot_GetSfxLumpNum(sfxinfo_t *sfx) {
