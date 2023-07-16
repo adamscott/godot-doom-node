@@ -81,7 +81,7 @@ private:
 	bool write_change_controller_valued(uint8_t p_channel, uint8_t p_control, uint8_t p_value, PackedByteArray &p_midi_output);
 	bool write_change_controller_valueless(uint8_t p_channel, uint8_t p_control, PackedByteArray &p_midi_output);
 	int32_t allocate_midi_channel();
-	int32_t get_midi_channel(int8_t p_mus_channel, PackedByteArray &p_midi_output);
+	int32_t get_midi_channel(int32_t p_mus_channel, PackedByteArray &p_midi_output);
 	bool read_mus_header(PackedByteArray &p_file, MusHeader *header);
 
 protected:

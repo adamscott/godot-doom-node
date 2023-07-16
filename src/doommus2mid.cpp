@@ -241,7 +241,7 @@ int32_t DOOMMus2Mid::allocate_midi_channel() {
 	return result;
 }
 
-int32_t DOOMMus2Mid::get_midi_channel(int8_t p_mus_channel, PackedByteArray &p_midi_output) {
+int32_t DOOMMus2Mid::get_midi_channel(int32_t p_mus_channel, PackedByteArray &p_midi_output) {
 	if (p_mus_channel == MUS_PERCUSSION_CHAN) {
 		return MIDI_PERCUSSION_CHAN;
 	}
