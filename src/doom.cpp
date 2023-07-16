@@ -116,6 +116,20 @@ void DOOM::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "assets_soundfont_path", PROPERTY_HINT_FILE, "*.sf2,*.sf3"), "set_soundfont_path", "get_soundfont_path");
 }
 
+void DOOM::_ready() {
+	img_texture.instantiate();
+	set_texture(img_texture);
+}
+
+void DOOM::_enter_tree() {
+}
+
+void DOOM::_exit_tree() {
+	if (enabled) {
+		kill_doom();
+	}
+}
+
 bool DOOM::get_import_assets() {
 	return false;
 }
@@ -834,20 +848,6 @@ void DOOM::update_music() {
 		return;
 	}
 	current_midi_playback = playback;
-}
-
-void DOOM::_ready() {
-	img_texture.instantiate();
-	set_texture(img_texture);
-}
-
-void DOOM::_enter_tree() {
-}
-
-void DOOM::_exit_tree() {
-	if (enabled) {
-		kill_doom();
-	}
 }
 
 void DOOM::doom_thread_func() {
