@@ -128,7 +128,9 @@ static int Godot_GetSfxLumpNum(sfxinfo_t *sfx) {
 }
 
 static void Godot_ShutdownSound(void) {
-	printf("shutdown sound");
+	SoundInstruction inst;
+	inst.type = SOUND_INSTRUCTION_TYPE_SHUTDOWN_SOUND;
+	add_instruction(inst);
 }
 
 static boolean Godot_InitSound(boolean _use_sfx_prefix) {

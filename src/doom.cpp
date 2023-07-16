@@ -761,6 +761,23 @@ void DOOM::update_sounds() {
 						0));
 			} break;
 
+			case SOUND_INSTRUCTION_TYPE_SHUTDOWN_SOUND: {
+				SubViewport *sound_subviewport = (SubViewport *)get_node_or_null("SoundSubViewportContainer/SoundSubViewport");
+				if (sound_subviewport == nullptr) {
+					continue;
+				}
+
+				TypedArray<Node> children = sound_subviewport->get_children();
+				for (int i = 0; i < children.size(); i++) {
+					AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)(Object *)children[i];
+					if (channel == nullptr) {
+						continue;
+					}
+
+					channel->stop();
+				}
+			} break;
+
 			case SOUND_INSTRUCTION_TYPE_EMPTY:
 			case SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND:
 			default: {
