@@ -78,7 +78,7 @@ static boolean Godot_SoundIsPlaying(int handle) {
 }
 
 static void Godot_StopSound(int handle) {
-	printf("update sound %d\n", handle);
+	// printf("update sound %d\n", handle);
 }
 
 static int Godot_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep) {
@@ -101,7 +101,8 @@ static int Godot_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep) {
 }
 
 static void Godot_UpdateSoundParams(int handle, int vol, int sep) {
-	printf("update sound %d, vol: %d\n", handle, vol);
+	// printf("update sound %d, vol: %d\n", handle, vol);
+	SoundInstruction inst;
 }
 
 static void Godot_UpdateSound(void) {

@@ -46,7 +46,7 @@ typedef enum MusicInstructionType {
 
 typedef struct MusicInstruction {
 	MusicInstructionType type;
-	char lump_sha1[20];
+	char lump_sha1_hex[40];
 	int32_t volume;
 	uint8_t looping : 1;
 } MusicInstruction;

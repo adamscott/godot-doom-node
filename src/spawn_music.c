@@ -10,41 +10,52 @@
 #include "spawn.h"
 
 #define SHA1_LEN 20
+#define SHA1_HEX_LEN 40
 
 typedef struct LumpSha1 {
-	unsigned char sha1[SHA1_LEN];
+	unsigned char sha1_hex[SHA1_HEX_LEN];
 	uint8_t handle;
 } LumpSha1;
 
 static LumpSha1 lump_sha1_list[UINT8_MAX];
 static uint8_t lump_sha1_list_size = 0;
 
-boolean static get_sha1_from_handle(void *handle, char *buffer) {
-	char sha1[20];
-	boolean found = false;
-	for (int i = 0; i < lump_sha1_list_size; i++) {
-		LumpSha1 lump = lump_sha1_list[i];
-		if (lump.handle == (uint64_t)handle) {
-			memcpy(sha1, lump.sha1, SHA1_LEN);
-			found = true;
-			break;
-		}
-	}
-
-	if (!found) {
+boolean static get_sha1_hex_from_handle(void *handle, char *buffer) {
+	uint64_t index = (uint64_t)handle;
+	if (index >= lump_sha1_list_size) {
 		return false;
 	}
+	LumpSha1 lump = lump_sha1_list[index];
 
-	memcpy(buffer, sha1, SHA1_LEN);
+	memcpy(buffer, lump.sha1_hex, SHA1_HEX_LEN);
 
 	return true;
 }
 
+static char *bin2hex(const unsigned char *bin, size_t len) {
+	char *out;
+	size_t i;
+
+	if (bin == NULL || len == 0)
+		return NULL;
+
+	out = malloc(len * 2 + 1);
+	for (i = 0; i < len; i++) {
+		out[i * 2] = "0123456789ABCDEF"[bin[i] >> 4];
+		out[i * 2 + 1] = "0123456789ABCDEF"[bin[i] & 0x0F];
+	}
+	out[len * 2] = '\0';
+
+	return out;
+}
+
 static boolean Godot_InitMusic(void) {
-	return false;
+	printf("INIT MUSIC\n");
+	return true;
 }
 
 static void Godot_ShutdownMusic(void) {
+	printf("SHUTDOWN MUSIC\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC;
 	shm->music_instructions[shm->music_instructions_length] = inst;
@@ -52,6 +63,7 @@ static void Godot_ShutdownMusic(void) {
 }
 
 static void Godot_SetMusicVolume(int volume) {
+	printf("SET MUSIC VOLUME\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME;
 	inst.volume = volume;
@@ -60,6 +72,7 @@ static void Godot_SetMusicVolume(int volume) {
 }
 
 static void Godot_PauseSong(void) {
+	printf("PAUSE SONG\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_PAUSE_SONG;
 	shm->music_instructions[shm->music_instructions_length] = inst;
@@ -67,6 +80,7 @@ static void Godot_PauseSong(void) {
 }
 
 static void Godot_ResumeSong(void) {
+	printf("RESUME SONG\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_RESUME_SONG;
 	shm->music_instructions[shm->music_instructions_length] = inst;
@@ -74,6 +88,8 @@ static void Godot_ResumeSong(void) {
 }
 
 static void *Godot_RegisterSong(void *data, int len) {
+	printf("REGISTER SONG\n");
+
 	sha1_context_t context;
 	sha1_digest_t hash;
 
@@ -82,14 +98,14 @@ static void *Godot_RegisterSong(void *data, int len) {
 	SHA1_Final(hash, &context);
 
 	LumpSha1 sha;
-	memcpy(sha.sha1, hash, SHA1_LEN);
+	memcpy(sha.sha1_hex, bin2hex(hash, SHA1_LEN), SHA1_HEX_LEN);
 	lump_sha1_list[lump_sha1_list_size] = sha;
 	void *handle = (void *)(uint64_t)lump_sha1_list_size;
 	lump_sha1_list_size++;
 
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_REGISTER_SONG;
-	memcpy(inst.lump_sha1, hash, SHA1_LEN);
+	memcpy(inst.lump_sha1_hex, sha.sha1_hex, SHA1_HEX_LEN);
 	shm->music_instructions[shm->music_instructions_length] = inst;
 	shm->music_instructions_length++;
 
@@ -97,35 +113,38 @@ static void *Godot_RegisterSong(void *data, int len) {
 }
 
 static void Godot_UnRegisterSong(void *handle) {
-	char sha1[20];
+	printf("UNREGISTER SONG\n");
+	char sha1[SHA1_HEX_LEN];
 
-	if (!get_sha1_from_handle(handle, sha1)) {
+	if (!get_sha1_hex_from_handle(handle, sha1)) {
 		return;
 	}
 
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG;
-	memcpy(inst.lump_sha1, sha1, SHA1_LEN);
+	memcpy(inst.lump_sha1_hex, sha1, SHA1_HEX_LEN);
 	shm->music_instructions[shm->music_instructions_length] = inst;
 	shm->music_instructions_length++;
 }
 
 static void Godot_PlaySong(void *handle, boolean looping) {
-	char sha1[20];
+	printf("PLAY SONG\n");
+	char sha1[SHA1_HEX_LEN];
 
-	if (!get_sha1_from_handle(handle, sha1)) {
+	if (!get_sha1_hex_from_handle(handle, sha1)) {
 		return;
 	}
 
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_PLAY_SONG;
-	memcpy(inst.lump_sha1, sha1, SHA1_LEN);
+	memcpy(inst.lump_sha1_hex, sha1, SHA1_HEX_LEN);
 	inst.looping = true;
 	shm->music_instructions[shm->music_instructions_length] = inst;
 	shm->music_instructions_length++;
 }
 
 static void Godot_StopSong(void) {
+	printf("STOP SONG\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_STOP_SONG;
 	shm->music_instructions[shm->music_instructions_length] = inst;

@@ -4,6 +4,8 @@
 #include <cstdint>
 
 #include "doomgeneric/doomgeneric.h"
+#include "godot_cpp/classes/audio_stream_generator.hpp"
+#include "godot_cpp/classes/audio_stream_generator_playback.hpp"
 #include "godot_cpp/classes/audio_stream_player.hpp"
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/image_texture.hpp"
@@ -79,6 +81,20 @@ private:
 	bool enabled = false;
 	String wad_path;
 	String soundfont_path;
+
+	String current_midi_path;
+	bool current_midi_playing = false;
+	uint32_t current_midi_tick = 0;
+	bool current_midi_pause = false;
+	bool current_midi_looping = false;
+	uint32_t current_midi_volume = 0;
+	uint32_t len_asked = 0;
+	// PackedVector2Array current_midi_frames;
+	float current_midi_buffer[32767 * 2];
+	uint64_t current_midi_last_tick = 0;
+
+	Ref<AudioStreamGenerator> current_midi_stream = nullptr;
+	Ref<AudioStreamGeneratorPlayback> current_midi_playback = nullptr;
 
 	String wad_name;
 	String wad_hash;

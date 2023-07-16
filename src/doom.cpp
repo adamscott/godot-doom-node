@@ -1,9 +1,14 @@
 #include "doom.h"
 
 #include <signal.h>
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 
+#include "godot_cpp/classes/audio_server.hpp"
+#include "godot_cpp/classes/audio_stream_generator.hpp"
+#include "godot_cpp/classes/audio_stream_generator_playback.hpp"
 #include "godot_cpp/classes/audio_stream_player.hpp"
 #include "godot_cpp/classes/audio_stream_wav.hpp"
 #include "godot_cpp/classes/control.hpp"
@@ -26,6 +31,7 @@
 #include "godot_cpp/variant/callable.hpp"
 #include "godot_cpp/variant/packed_byte_array.hpp"
 #include "godot_cpp/variant/packed_int32_array.hpp"
+#include "godot_cpp/variant/packed_vector2_array.hpp"
 #include "godot_cpp/variant/string.hpp"
 #include "godot_cpp/variant/typed_array.hpp"
 #include "godot_cpp/variant/utility_functions.hpp"
@@ -54,6 +60,7 @@ extern "C" {
 #include "fluidsynth.h"
 #include "fluidsynth/audio.h"
 #include "fluidsynth/midi.h"
+#include "fluidsynth/misc.h"
 #include "fluidsynth/settings.h"
 #include "fluidsynth/synth.h"
 #include "fluidsynth/types.h"
@@ -208,6 +215,150 @@ void DOOM::launch_doom_executable() {
 }
 
 void DOOM::midi_thread_func() {
+	while (true) {
+		if (exiting) {
+			return;
+		}
+
+		if (current_midi_path.is_empty() || !current_midi_playing || current_midi_pause) {
+			usleep(1000);
+			continue;
+		}
+
+		fluid_settings_t *settings;
+		fluid_synth_t *synth;
+		fluid_player_t *player;
+		fluid_audio_driver_t *audio_driver;
+
+		String soundfont_global_path = ProjectSettings::get_singleton()->globalize_path(soundfont_path);
+		char *soundfont_global_path_char = strdup(soundfont_global_path.utf8().get_data());
+
+		String current_midi_global_path = ProjectSettings::get_singleton()->globalize_path(current_midi_path);
+		char *current_midi_global_path_char = strdup(current_midi_global_path.utf8().get_data());
+
+		settings = new_fluid_settings();
+		// fluid_settings_setint(settings, "player.reset-synth", false);
+		// fluid_settings_setstr(settings, "player.timing-source", "sample");
+
+		synth = new_fluid_synth(settings);
+		fluid_synth_set_gain(synth, 1.0f);
+
+		if (!fluid_is_soundfont(soundfont_global_path_char)) {
+			soundfont_path = "";
+			usleep(1000);
+			continue;
+		}
+
+		int synth_id = fluid_synth_sfload(synth, soundfont_global_path_char, false);
+
+		player = new_fluid_player(synth);
+		// audio_driver = new_fluid_audio_driver(settings, synth);
+
+		if (!fluid_is_midifile(current_midi_global_path_char)) {
+			current_midi_path = "";
+			usleep(1000);
+			continue;
+		}
+
+		fluid_player_add(player, current_midi_global_path_char);
+		fluid_player_seek(player, current_midi_tick);
+		fluid_player_play(player);
+
+		current_midi_last_tick = Time::get_singleton()->get_ticks_usec();
+
+		while (fluid_player_get_status(player) == FLUID_PLAYER_PLAYING) {
+			// UtilityFunctions::print("PLAYING");
+			if (exiting) {
+				fluid_player_stop(player);
+				fluid_player_join(player);
+
+				// delete_fluid_audio_driver(audio_driver);
+				delete_fluid_player(player);
+				delete_fluid_synth(synth);
+				delete_fluid_settings(settings);
+				return;
+			}
+
+			if (current_midi_pause) {
+				current_midi_tick = fluid_player_get_current_tick(player);
+				fluid_player_stop(player);
+			}
+
+			if (!current_midi_playing) {
+				current_midi_tick = 0;
+				fluid_player_stop(player);
+			}
+
+			if (current_midi_playback.is_null()) {
+				continue;
+			}
+
+			usleep(100);
+
+			uint64_t ticks = Time::get_singleton()->get_ticks_usec();
+			uint64_t diff = ticks - current_midi_last_tick;
+
+			uint32_t len_asked = current_midi_stream->get_mix_rate() / 100000 * diff;
+
+			current_midi_last_tick = ticks;
+
+			// uint32_t len_asked = current_midi_playback->get_frames_available();
+			// UtilityFunctions::print(vformat("len asked: %s, avail: %s", len_asked, current_midi_playback->get_frames_available()));
+
+			if (current_midi_playback->get_frames_available() < len_asked) {
+				len_asked = current_midi_playback->get_frames_available();
+			}
+
+			if (len_asked <= 0) {
+				continue;
+			}
+
+			float bufl[len_asked], bufr[len_asked];
+
+			// float *buf = (float *)malloc(sizeof(float) * 2 * len_asked);
+			// if (buf == nullptr) {
+			// 	continue;
+			// }
+
+			// memset(buf, 0, sizeof(float) * 2 * len_asked);
+
+			if (fluid_synth_write_float(synth, len_asked, bufl, 0, 1, bufr, 0, 1) == FLUID_FAILED) {
+				break;
+			}
+
+			PackedVector2Array frames;
+			for (int i = 0; i < len_asked; i++) {
+				// current_midi_playback->push_frame(Vector2(current_midi_buffer[i], current_midi_buffer[i + 1]));
+				frames.append(Vector2(bufl[i], bufr[i]));
+			}
+
+			// memfree(buf);
+
+			current_midi_playback->push_buffer(frames);
+			frames.clear();
+
+			// memfree(buf);
+
+			// current_midi_frames.append_array(frames);
+
+			len_asked = 0;
+
+			// if (current_midi_playback->can_push_buffer(current_midi_frames.size())) {
+			// 	// UtilityFunctions::print(vformat("push %s", current_midi_frames.size()));
+			// 	current_midi_playback->push_buffer(current_midi_frames);
+			// }
+		}
+
+		fluid_player_stop(player);
+		fluid_player_join(player);
+
+		delete_fluid_player(player);
+
+		fluid_synth_sfunload(synth, synth_id, false);
+		delete_fluid_synth(synth);
+
+		delete_fluid_settings(settings);
+	}
 }
 
 void DOOM::wad_thread_func() {
@@ -315,13 +466,6 @@ void DOOM::midi_fetching_thread_func() {
 	if (!FileAccess::file_exists(soundfont_path)) {
 		return;
 	}
-	fluid_settings_t *settings;
-	fluid_synth_t *synth;
-	fluid_player_t *player;
-	fluid_file_renderer_t *renderer;
-
-	String soundfont_global_path = ProjectSettings::get_singleton()->globalize_path(soundfont_path);
-	char *soundfont_global_path_char = strdup(soundfont_global_path.utf8().get_data());
 
 	Array keys = files.keys();
 
@@ -474,6 +618,7 @@ void DOOM::append_sounds() {
 		sound_container->add_child(player);
 		player->set_owner(get_tree()->get_edited_scene_root());
 		player->set_name(vformat("Channel%s", i));
+		player->set_bus("SFX");
 	}
 
 	Array keys = files.keys();
@@ -504,20 +649,14 @@ void DOOM::append_music() {
 	music_container->add_child(player);
 	player->set_owner(get_tree()->get_edited_scene_root());
 	player->set_name("Player");
+	player->set_bus("Music");
 
-	Array keys = files.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		String key = keys[i];
-		if (!key.begins_with("D_")) {
-			continue;
-		}
-		Dictionary info = files[key];
-		AudioStreamPlayer *player = reinterpret_cast<AudioStreamPlayer *>((Object *)info["player"]);
-		if (player != nullptr) {
-			music_container->add_child(player);
-			player->set_owner(get_tree()->get_edited_scene_root());
-		}
-	}
+	Ref<AudioStreamGenerator> stream;
+	stream.instantiate();
+	stream->set_buffer_length(0.05);
+	current_midi_stream = stream;
+	player->set_stream(current_midi_stream);
+	player->play();
 }
 
 void DOOM::wad_thread_end() {
@@ -548,7 +687,7 @@ void DOOM::midi_fetching_thread_end() {
 		sound_fetching_thread->wait_to_finish();
 	}
 
-	// append_music();
+	append_music();
 
 	midi_fetch_complete = true;
 	update_assets_status();
@@ -601,6 +740,7 @@ void DOOM::_process(double delta) {
 
 	update_screen_buffer();
 	update_sounds();
+	update_music();
 }
 
 void DOOM::update_screen_buffer() {
@@ -645,8 +785,8 @@ void DOOM::update_sounds() {
 				if (squatting_sound != nullptr) {
 					squatting_sound->stop();
 					squatting_sound->set_stream(source->get_stream());
-					squatting_sound->set_pitch_scale(
-							UtilityFunctions::remap(instruction.pitch, 0, INT8_MAX, 0, 2));
+					// squatting_sound->set_pitch_scale(
+					// 		UtilityFunctions::remap(instruction.pitch, 0, INT8_MAX, 0, 2));
 					squatting_sound->set_volume_db(
 							UtilityFunctions::linear_to_db(
 									UtilityFunctions::remap(instruction.volume, 0.0, INT8_MAX, 0.0, 2.0)));
@@ -665,12 +805,107 @@ void DOOM::update_sounds() {
 }
 
 void DOOM::update_music() {
-	Node *music_container = get_node<Node>("MusicContainer");
-	if (music_container == nullptr) {
+	AudioStreamPlayer *player = get_node<AudioStreamPlayer>("MusicContainer/Player");
+	if (player == nullptr) {
 		return;
 	}
 
+	for (MusicInstruction instruction : music_instructions) {
+		switch (instruction.type) {
+			case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
+				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_REGISTER_SONG"));
+
+				String sha1;
+				String midi_file;
+
+				for (int i = 0; i < sizeof(instruction.lump_sha1_hex); i += sizeof(instruction.lump_sha1_hex[0])) {
+					sha1 += vformat("%c", instruction.lump_sha1_hex[i]);
+				}
+
+				UtilityFunctions::print(vformat("sha1 of received instruction: %s", sha1));
+
+				Array keys = files.keys();
+				for (int i = 0; i < keys.size(); i++) {
+					String key = keys[i];
+					if (!key.begins_with("D_")) {
+						continue;
+					}
+
+					Dictionary info = files[key];
+					UtilityFunctions::print(vformat("Comparing with %s (%s)", key, info["sha1"]));
+					if (sha1.to_lower() == String(info["sha1"]).to_lower()) {
+						midi_file = key;
+						break;
+					}
+				}
+
+				if (midi_file.is_empty()) {
+					break;
+				}
+
+				current_midi_path = vformat("user://godot-doom/%s-%s/%s.mid", wad_path.get_file().get_basename(), wad_hash, midi_file);
+			} break;
+
+			case MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG: {
+				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG"));
+				current_midi_path = "";
+			} break;
+
+			case MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
+				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PLAY_SONG"));
+				current_midi_looping = instruction.looping;
+				current_midi_playing = true;
+			} break;
+
+			case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
+				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_STOP_SONG"));
+				current_midi_playing = false;
+			} break;
+
+			case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
+				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PAUSE_SONG"));
+				current_midi_pause = true;
+			} break;
+
+			case MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
+				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_RESUME_SONG"));
+				current_midi_pause = false;
+			} break;
+
+			case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC: {
+				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC"));
+				current_midi_playing = false;
+			} break;
+
+			case MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {
+				UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME"));
+				current_midi_volume = instruction.volume;
+			} break;
+
+			case MusicInstructionType::MUSIC_INSTRUCTION_TYPE_EMPTY:
+			default: {
+			}
+		}
+	}
 	music_instructions.clear();
+
+	player->play();
+	Ref<AudioStreamGeneratorPlayback> playback = player->get_stream_playback();
+	if (playback.is_null()) {
+		return;
+	}
+
+	current_midi_playback = playback;
+
+	// if (current_midi_frames.size() > 0) {
+	// 	if (playback->can_push_buffer(current_midi_frames.size())) {
+	// 		UtilityFunctions::print(vformat("push %s", current_midi_frames.size()));
+	// 		playback->push_buffer(current_midi_frames);
+	// 		current_midi_frames.clear();
+	// 	}
+	// }
+
+	// len_asked = playback->get_frames_available();
 }
 
 void DOOM::_ready() {
@@ -727,6 +962,7 @@ void DOOM::doom_thread_func() {
 
 		// Music
 		for (int i = 0; i < shm->music_instructions_length; i++) {
+			UtilityFunctions::print("got instruction!");
 			MusicInstruction instruction = shm->music_instructions[i];
 			music_instructions.append(instruction);
 		}
