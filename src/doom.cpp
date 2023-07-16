@@ -240,7 +240,7 @@ void DOOM::midi_thread_func() {
 		}
 
 		if (current_midi_path.is_empty() || !current_midi_playing || current_midi_pause) {
-			usleep(10);
+			OS::get_singleton()->delay_usec(10);
 			continue;
 		}
 
@@ -265,7 +265,7 @@ void DOOM::midi_thread_func() {
 
 		if (!fluid_is_soundfont(soundfont_global_path_char)) {
 			soundfont_path = "";
-			usleep(10);
+			OS::get_singleton()->delay_usec(10);
 			continue;
 		}
 
@@ -276,7 +276,7 @@ void DOOM::midi_thread_func() {
 
 		if (!fluid_is_midifile(current_midi_global_path_char)) {
 			current_midi_path = "";
-			usleep(10);
+			OS::get_singleton()->delay_usec(10);
 			continue;
 		}
 
@@ -321,7 +321,7 @@ void DOOM::midi_thread_func() {
 				continue;
 			}
 
-			usleep(10);
+			OS::get_singleton()->delay_usec(10);
 
 			uint64_t ticks = Time::get_singleton()->get_ticks_usec();
 			uint64_t diff = ticks - current_midi_last_tick;
@@ -869,7 +869,7 @@ void DOOM::doom_thread_func() {
 		shm->music_instructions_length = 0;
 
 		// Let's sleep the time Doom asks
-		usleep(shm->sleep_ms * 1000);
+		OS::get_singleton()->delay_usec(shm->sleep_ms * 1000);
 
 		// Reset the shared memory
 		shm->ready = false;
