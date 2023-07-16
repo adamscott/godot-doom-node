@@ -279,12 +279,10 @@ void DOOM::midi_thread_func() {
 		String playing_path = current_midi_path;
 
 		while (fluid_player_get_status(player) == FLUID_PLAYER_PLAYING) {
-			// UtilityFunctions::print("PLAYING");
 			if (exiting) {
 				fluid_player_stop(player);
 				fluid_player_join(player);
 
-				// delete_fluid_audio_driver(audio_driver);
 				delete_fluid_player(player);
 				delete_fluid_synth(synth);
 				delete_fluid_settings(settings);
@@ -292,21 +290,18 @@ void DOOM::midi_thread_func() {
 			}
 
 			if (current_midi_pause) {
-				UtilityFunctions::print(vformat("current_midi_pause"));
 				current_midi_tick = fluid_player_get_current_tick(player);
 				fluid_player_stop(player);
 				break;
 			}
 
 			if (!current_midi_playing) {
-				UtilityFunctions::print(vformat("!current_midi_playing"));
 				current_midi_tick = 0;
 				fluid_player_stop(player);
 				break;
 			}
 
 			if (current_midi_path != playing_path) {
-				UtilityFunctions::print(vformat("current_midi_path != playing_path"));
 				current_midi_tick = 0;
 				fluid_player_stop(player);
 				break;
@@ -320,12 +315,9 @@ void DOOM::midi_thread_func() {
 
 			uint64_t ticks = Time::get_singleton()->get_ticks_usec();
 			uint64_t diff = ticks - current_midi_last_tick;
-
-			uint32_t len_asked = current_midi_stream->get_mix_rate() / 1000 * diff / 10;
-
 			current_midi_last_tick = ticks;
 
-			// UtilityFunctions::print(vformat("len asked: %s, avail: %s", len_asked, current_midi_playback->get_frames_available()));
+			uint32_t len_asked = current_midi_stream->get_mix_rate() / 1000 * diff / 10;
 
 			if (current_midi_playback->get_frames_available() < len_asked) {
 				len_asked = current_midi_playback->get_frames_available();
@@ -928,7 +920,6 @@ void DOOM::doom_thread_func() {
 
 		// Music
 		for (int i = 0; i < shm->music_instructions_length; i++) {
-			UtilityFunctions::print("got instruction!");
 			MusicInstruction instruction = shm->music_instructions[i];
 			music_instructions.append(instruction);
 		}
@@ -943,16 +934,12 @@ void DOOM::doom_thread_func() {
 		for (MusicInstruction instruction : music_instructions) {
 			switch (instruction.type) {
 				case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
-					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_REGISTER_SONG"));
-
 					String sha1;
 					String midi_file;
 
 					for (int i = 0; i < sizeof(instruction.lump_sha1_hex); i += sizeof(instruction.lump_sha1_hex[0])) {
 						sha1 += vformat("%c", instruction.lump_sha1_hex[i]);
 					}
-
-					UtilityFunctions::print(vformat("sha1 of received instruction: %s", sha1));
 
 					Array keys = files.keys();
 					for (int i = 0; i < keys.size(); i++) {
@@ -962,7 +949,6 @@ void DOOM::doom_thread_func() {
 						}
 
 						Dictionary info = files[key];
-						UtilityFunctions::print(vformat("Comparing with %s (%s)", key, info["sha1"]));
 						if (sha1.to_lower() == String(info["sha1"]).to_lower()) {
 							midi_file = key;
 							break;
@@ -977,39 +963,32 @@ void DOOM::doom_thread_func() {
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG: {
-					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG"));
 					current_midi_path = "";
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
-					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PLAY_SONG"));
 					current_midi_looping = instruction.looping;
 					current_midi_playing = true;
 					current_midi_pause = false;
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
-					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_STOP_SONG"));
 					current_midi_playing = false;
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
-					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PAUSE_SONG"));
 					current_midi_pause = true;
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
-					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_RESUME_SONG"));
 					current_midi_pause = false;
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC: {
-					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC"));
 					current_midi_playing = false;
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {
-					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME"));
 					current_midi_volume = instruction.volume;
 				} break;
 
