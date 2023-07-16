@@ -50,12 +50,10 @@ static char *bin2hex(const unsigned char *bin, size_t len) {
 }
 
 static boolean Godot_InitMusic(void) {
-	printf("INIT MUSIC\n");
 	return true;
 }
 
 static void Godot_ShutdownMusic(void) {
-	printf("SHUTDOWN MUSIC\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC;
 	shm->music_instructions[shm->music_instructions_length] = inst;
@@ -63,7 +61,6 @@ static void Godot_ShutdownMusic(void) {
 }
 
 static void Godot_SetMusicVolume(int volume) {
-	printf("SET MUSIC VOLUME\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME;
 	inst.volume = volume;
@@ -72,7 +69,6 @@ static void Godot_SetMusicVolume(int volume) {
 }
 
 static void Godot_PauseSong(void) {
-	printf("PAUSE SONG\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_PAUSE_SONG;
 	shm->music_instructions[shm->music_instructions_length] = inst;
@@ -80,7 +76,6 @@ static void Godot_PauseSong(void) {
 }
 
 static void Godot_ResumeSong(void) {
-	printf("RESUME SONG\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_RESUME_SONG;
 	shm->music_instructions[shm->music_instructions_length] = inst;
@@ -88,8 +83,6 @@ static void Godot_ResumeSong(void) {
 }
 
 static void *Godot_RegisterSong(void *data, int len) {
-	printf("REGISTER SONG\n");
-
 	sha1_context_t context;
 	sha1_digest_t hash;
 
@@ -113,7 +106,6 @@ static void *Godot_RegisterSong(void *data, int len) {
 }
 
 static void Godot_UnRegisterSong(void *handle) {
-	printf("UNREGISTER SONG\n");
 	char sha1[SHA1_HEX_LEN];
 
 	if (!get_sha1_hex_from_handle(handle, sha1)) {
@@ -128,7 +120,6 @@ static void Godot_UnRegisterSong(void *handle) {
 }
 
 static void Godot_PlaySong(void *handle, boolean looping) {
-	printf("PLAY SONG\n");
 	char sha1[SHA1_HEX_LEN];
 
 	if (!get_sha1_hex_from_handle(handle, sha1)) {
@@ -144,7 +135,6 @@ static void Godot_PlaySong(void *handle, boolean looping) {
 }
 
 static void Godot_StopSong(void) {
-	printf("STOP SONG\n");
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_STOP_SONG;
 	shm->music_instructions[shm->music_instructions_length] = inst;
