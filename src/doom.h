@@ -19,6 +19,8 @@
 #include "godot_cpp/variant/packed_byte_array.hpp"
 
 extern "C" {
+#include "fluidsynth.h"
+
 #include "common.h"
 #include "spawn.h"
 }
@@ -94,6 +96,12 @@ private:
 	// PackedVector2Array current_midi_frames;
 	float current_midi_buffer[32767 * 2];
 	uint64_t current_midi_last_tick = 0;
+
+	fluid_settings_t *settings;
+	fluid_synth_t *synth;
+	int synth_id = -1;
+	fluid_player_t *player;
+	fluid_audio_driver_t *audio_driver;
 
 	Ref<AudioStreamGenerator> current_midi_stream = nullptr;
 	Ref<AudioStreamGeneratorPlayback> current_midi_playback = nullptr;

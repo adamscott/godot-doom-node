@@ -162,6 +162,17 @@ String DOOM::get_soundfont_path() {
 
 void DOOM::set_soundfont_path(String p_soundfont_path) {
 	soundfont_path = p_soundfont_path;
+	String global_path = ProjectSettings::get_singleton()->globalize_path(p_soundfont_path);
+	const char *global_path_char = global_path.utf8().get_data();
+
+	mutex->lock();
+	if (fluid_is_soundfont(global_path_char)) {
+		synth_id = fluid_synth_sfload(synth, global_path_char, true);
+	} else if (synth_id != -1) {
+		fluid_synth_sfunload(synth, synth_id, true);
+		synth_id = -1;
+	}
+	mutex->unlock();
 }
 
 void DOOM::import_assets() {
@@ -261,35 +272,11 @@ void DOOM::midi_thread_func() {
 		}
 		mutex->unlock();
 
-		fluid_settings_t *settings;
-		fluid_synth_t *synth;
-		fluid_player_t *player;
-		fluid_audio_driver_t *audio_driver;
-
 		String soundfont_global_path = ProjectSettings::get_singleton()->globalize_path(soundfont_path);
 		char *soundfont_global_path_char = strdup(soundfont_global_path.utf8().get_data());
 
 		String current_midi_global_path = ProjectSettings::get_singleton()->globalize_path(current_midi_path);
 		char *current_midi_global_path_char = strdup(current_midi_global_path.utf8().get_data());
-
-		settings = new_fluid_settings();
-		// fluid_settings_setint(settings, "player.reset-synth", false);
-		// fluid_settings_setstr(settings, "player.timing-source", "sample");
-		fluid_settings_setstr(settings, "player.timing-source", "system");
-
-		synth = new_fluid_synth(settings);
-		fluid_synth_set_gain(synth, 1.0f);
-
-		if (!fluid_is_soundfont(soundfont_global_path_char)) {
-			soundfont_path = "";
-			OS::get_singleton()->delay_usec(10);
-			continue;
-		}
-
-		int synth_id = fluid_synth_sfload(synth, soundfont_global_path_char, false);
-
-		player = new_fluid_player(synth);
-		// audio_driver = new_fluid_audio_driver(settings, synth);
 
 		if (!fluid_is_midifile(current_midi_global_path_char)) {
 			current_midi_path = "";
@@ -309,10 +296,6 @@ void DOOM::midi_thread_func() {
 			if (exiting) {
 				fluid_player_stop(player);
 				fluid_player_join(player);
-
-				delete_fluid_player(player);
-				delete_fluid_synth(synth);
-				delete_fluid_settings(settings);
 				return;
 			}
 
@@ -373,13 +356,6 @@ void DOOM::midi_thread_func() {
 
 		fluid_player_stop(player);
 		fluid_player_join(player);
-
-		delete_fluid_player(player);
-
-		fluid_synth_sfunload(synth, synth_id, false);
-		delete_fluid_synth(synth);
-
-		delete_fluid_settings(settings);
 	}
 }
 
@@ -1003,9 +979,18 @@ void DOOM::init_shm() {
 DOOM::DOOM() {
 	spawn_pid = 0;
 	mutex.instantiate();
+
+	settings = new_fluid_settings();
+	fluid_settings_setstr(settings, "player.timing-source", "system");
+	synth = new_fluid_synth(settings);
+	fluid_synth_set_gain(synth, 0.8f);
+	player = new_fluid_player(synth);
 }
 
 DOOM::~DOOM() {
+	delete_fluid_player(player);
+	delete_fluid_synth(synth);
+	delete_fluid_settings(settings);
 }
 
 int DOOM::last_id = 0;
