@@ -1,7 +1,9 @@
 #include "doom.h"
 
+#include <bits/types/mbstate_t.h>
 #include <signal.h>
 #include <stdint.h>
+#include <uchar.h>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -34,6 +36,7 @@
 #include "godot_cpp/core/object.hpp"
 #include "godot_cpp/core/property_info.hpp"
 #include "godot_cpp/variant/callable.hpp"
+#include "godot_cpp/variant/char_string.hpp"
 #include "godot_cpp/variant/packed_byte_array.hpp"
 #include "godot_cpp/variant/packed_int32_array.hpp"
 #include "godot_cpp/variant/packed_vector2_array.hpp"
@@ -203,18 +206,23 @@ void DOOM::init_doom() {
 }
 
 void DOOM::launch_doom_executable() {
-	const char *path = ProjectSettings::get_singleton()->globalize_path("res://bin/godot-doom-spawn.linux.template_debug.x86_64").utf8().get_data();
-	const char *id = vformat("%s", shm_id).utf8().get_data();
-	const char *doom1_wad = vformat("%s", ProjectSettings::get_singleton()->globalize_path(wad_path)).utf8().get_data();
+	CharString path_cs = ProjectSettings::get_singleton()->globalize_path("res://bin/godot-doom-spawn.linux.template_debug.x86_64").utf8();
+	CharString id_cs = vformat("%s", shm_id).utf8();
+	CharString wad_cs = ProjectSettings::get_singleton()->globalize_path(wad_path).utf8();
+	CharString config_dir_cs = ProjectSettings::get_singleton()->globalize_path(vformat("user://godot-doom/%s-%s/", wad_path.get_file().get_basename(), wad_hash)).utf8();
 
 	char *args[] = {
-		strdup(path),
+		(char *)path_cs.get_data(),
 		strdup("-id"),
-		strdup(id),
+		(char *)id_cs.get_data(),
 		strdup("-iwad"),
-		strdup(doom1_wad),
+		(char *)wad_cs.get_data(),
+		strdup("-configdir"),
+		(char *)config_dir_cs.get_data(),
 		NULL
 	};
+
+	// args[4] = strdup(wad);
 
 	char *envp[] = {
 		NULL
