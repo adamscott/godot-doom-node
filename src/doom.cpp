@@ -74,6 +74,10 @@ extern "C" {
 #include "fluidsynth/types.h"
 }
 
+#ifndef SPAWN_EXECUTABLE_NAME
+#define SPAWN_EXECUTABLE_NAME "godot-doom-spawn.linux.template_debug.x86_64"
+#endif
+
 #define SOUND_SUBVIEWPORT_SIZE 512
 
 using namespace godot;
@@ -206,7 +210,7 @@ void DOOM::init_doom() {
 }
 
 void DOOM::launch_doom_executable() {
-	CharString path_cs = ProjectSettings::get_singleton()->globalize_path("res://bin/godot-doom-spawn.linux.template_debug.x86_64").utf8();
+	CharString path_cs = ProjectSettings::get_singleton()->globalize_path(vformat("res://bin/%s", SPAWN_EXECUTABLE_NAME)).utf8();
 	CharString id_cs = vformat("%s", shm_id).utf8();
 	CharString wad_cs = ProjectSettings::get_singleton()->globalize_path(wad_path).utf8();
 	CharString config_dir_cs = ProjectSettings::get_singleton()->globalize_path(vformat("user://godot-doom/%s-%s/", wad_path.get_file().get_basename(), wad_hash)).utf8();
@@ -221,8 +225,6 @@ void DOOM::launch_doom_executable() {
 		(char *)config_dir_cs.get_data(),
 		NULL
 	};
-
-	// args[4] = strdup(wad);
 
 	char *envp[] = {
 		NULL

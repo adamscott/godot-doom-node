@@ -44,8 +44,10 @@ env = SConscript("godot-cpp/SConstruct", {
 # - LINKFLAGS are for linking flags
 
 # tweak this if you want to use different folders, or more folders, to store your source code in.
+spawn_executable_name = "godot-doom-spawn{}".format(env["suffix"])
+
 env.Append(CPPPATH=[os.path.abspath("src/"), os.path.abspath("thirdparty/doomgeneric")])
-env.Append(CPPDEFINES=["FEATURE_SOUND_GODOT"])
+env.Append(CPPDEFINES=["FEATURE_SOUND_GODOT", f"SPAWN_EXECUTABLE_NAME=\"\\\"{spawn_executable_name}\\\"\""])
 
 sources = Glob("src/*.cpp")
 spawn_sources = Glob("src/*.c")
@@ -82,7 +84,7 @@ else:
         source=sources,
     )
 program = env.Program(
-    "demo/bin/godot-doom-spawn{}".format(env["suffix"]),
+    "demo/bin/{}".format(spawn_executable_name),
     source=spawn_sources
 )
 
