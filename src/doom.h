@@ -93,8 +93,6 @@ private:
 	bool current_midi_looping = false;
 	uint32_t current_midi_volume = 0;
 	uint32_t len_asked = 0;
-	// PackedVector2Array current_midi_frames;
-	float current_midi_buffer[32767 * 2];
 	uint64_t current_midi_last_tick = 0;
 
 	fluid_settings_t *settings;
