@@ -297,6 +297,10 @@ void DOOM::midi_thread_func() {
 					current_midi_path = vformat("user://godot-doom/%s-%s/%s.mid", wad_path.get_file().get_basename(), wad_hash, midi_file);
 					mutex->unlock();
 
+					if (player == nullptr) {
+						player = new_fluid_player(synth);
+					}
+
 					String local_midi_path = ProjectSettings::get_singleton()->globalize_path(current_midi_path);
 					const char *local_midi_path_char = local_midi_path.utf8().get_data();
 					fluid_player_add(player, local_midi_path_char);
@@ -309,30 +313,52 @@ void DOOM::midi_thread_func() {
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
+					if (player == nullptr) {
+						player = new_fluid_player(synth);
+						String local_midi_path = ProjectSettings::get_singleton()->globalize_path(current_midi_path);
+						const char *local_midi_path_char = local_midi_path.utf8().get_data();
+						fluid_player_add(player, local_midi_path_char);
+					}
+
+					current_midi_looping = instruction.looping;
+
 					fluid_player_seek(player, 0);
-					fluid_player_set_loop(player, instruction.looping ? -1 : 0);
+					fluid_player_set_loop(player, current_midi_looping ? -1 : 0);
 					fluid_player_play(player);
-				} break;
-
-				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
-					fluid_player_stop(player);
-					fluid_player_join(player);
-					fluid_player_seek(player, 0);
-				} break;
-
-				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
-					fluid_player_stop(player);
-					fluid_player_join(player);
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
+					if (player == nullptr) {
+						player = new_fluid_player(synth);
+						String local_midi_path = ProjectSettings::get_singleton()->globalize_path(current_midi_path);
+						const char *local_midi_path_char = local_midi_path.utf8().get_data();
+						fluid_player_add(player, local_midi_path_char);
+					}
+
+					fluid_player_seek(player, current_midi_tick);
+					fluid_player_set_loop(player, current_midi_looping ? -1 : 0);
 					fluid_player_play(player);
 				} break;
 
-				case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC: {
-					fluid_player_stop(player);
-					fluid_player_join(player);
-					fluid_player_seek(player, 0);
+				case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC:
+				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
+					if (player != nullptr) {
+						fluid_player_stop(player);
+						fluid_player_join(player);
+						delete_fluid_player(player);
+						player = nullptr;
+					}
+				} break;
+
+				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
+					if (player != nullptr) {
+						current_midi_tick = fluid_player_get_current_tick(player);
+
+						fluid_player_stop(player);
+						fluid_player_join(player);
+						delete_fluid_player(player);
+						player = nullptr;
+					}
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {
@@ -372,7 +398,6 @@ void DOOM::midi_thread_func() {
 				}
 
 				float bufl[len_asked], bufr[len_asked];
-
 				if (fluid_synth_write_float(synth, len_asked, bufl, 0, 1, bufr, 0, 1) == FLUID_FAILED) {
 					break;
 				}
