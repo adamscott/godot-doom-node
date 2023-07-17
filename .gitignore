@@ -17,9 +17,6 @@ mono_crash.*.json
 # godot-cpp
 /godot-cpp
 
-demo/bin/*
-!demo/bin/godot-doom.gdextension
-
 # VSCode
 .vscode/settings.json
 
@@ -35,3 +32,9 @@ demo/bin/*
 
 # Clang
 compile_commands.json
+
+# Addons
+demo/bin/*
+!demo/bin/godot-doom.gdextension
+
+**/addons/godot-doom-node/**/*.template_debug.*
