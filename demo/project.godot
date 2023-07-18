@@ -10,5 +10,5 @@ config_version=5
 
 [application]
 
-config/name="Godot DOOM Demo"
+config/name="Godot DOOM Node Demo"
 config/features=PackedStringArray("4.2")
