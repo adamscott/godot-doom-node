@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://main.gd" id="1_bak3v"]
 
-[sub_resource type="ImageTexture" id="ImageTexture_jqg5x"]
+[sub_resource type="ImageTexture" id="ImageTexture_lhtot"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_bak3v")
@@ -10,7 +10,6 @@ script = ExtResource("1_bak3v")
 [node name="DOOM" type="DOOM" parent="."]
 assets_wad_path = "res://doom/DOOM1.WAD"
 assets_soundfont_path = "res://doom/sf3/MuseScore_General.sf3"
-offset_right = 917.0
-offset_bottom = 557.0
-texture = SubResource("ImageTexture_jqg5x")
-stretch_mode = 5
+offset_right = 873.0
+offset_bottom = 547.0
+texture = SubResource("ImageTexture_lhtot")

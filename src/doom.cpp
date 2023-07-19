@@ -1,6 +1,5 @@
 #include "doom.h"
 
-#include <bits/types/mbstate_t.h>
 #include <signal.h>
 #include <stdint.h>
 #include <uchar.h>
@@ -22,6 +21,10 @@
 #include "godot_cpp/classes/global_constants.hpp"
 #include "godot_cpp/classes/hashing_context.hpp"
 #include "godot_cpp/classes/image_texture.hpp"
+#include "godot_cpp/classes/input_event.hpp"
+#include "godot_cpp/classes/input_event_key.hpp"
+#include "godot_cpp/classes/input_event_mouse_button.hpp"
+#include "godot_cpp/classes/input_event_mouse_motion.hpp"
 #include "godot_cpp/classes/node.hpp"
 #include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/classes/project_settings.hpp"
@@ -49,11 +52,12 @@
 #include "doomgeneric/doomtype.h"
 
 #include "doommus2mid.h"
-#include "swap.h"
+#include "doomswap.h"
 
 extern "C" {
 #include <err.h>
 #include <errno.h>
+#include <spawn.h>
 #include <stdio.h>
 #include <unistd.h>
 // Shared memory
@@ -62,7 +66,8 @@ extern "C" {
 #include <sys/stat.h>
 
 // GodotDoomNode
-#include "common.h"
+#include "doomcommon.h"
+#include "doomshm.h"
 
 // Fluidsynth
 #include "fluidsynth.h"
@@ -99,6 +104,10 @@ void DOOM::_bind_methods() {
 	ADD_GROUP("DOOM", "doom_");
 	ADD_GROUP("Assets", "assets_");
 
+	ClassDB::bind_method(D_METHOD("get_assets_ready"), &DOOM::get_assets_ready);
+	ClassDB::bind_method(D_METHOD("set_assets_ready"), &DOOM::set_assets_ready);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "doom_assets_ready"), "set_assets_ready", "get_assets_ready");
+
 	ClassDB::bind_method(D_METHOD("get_enabled"), &DOOM::get_enabled);
 	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &DOOM::set_enabled);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "doom_enabled"), "set_enabled", "get_enabled");
@@ -130,12 +139,60 @@ void DOOM::_exit_tree() {
 	}
 }
 
+void DOOM::_input(const Ref<InputEvent> &event) {
+	if (spawn_pid == 0 || shm == nullptr) {
+		return;
+	}
+
+	// Ref<InputEventKey> key = event;
+	// if (key.is_valid()) {
+	// 	if (key->is_pressed()) {
+	// 		shm->keys_pressed[shm->keys_pressed_length] = key->get_physical_keycode_with_modifiers();
+	// 	} else if (key->is_released()) {
+	// 		Vector<char> shm_keys;
+	// 		shm_keys.resize(shm->keys_pressed_length);
+	// 		memcpy(shm_keys.ptrw(), shm->keys_pressed, shm->keys_pressed_length);
+	// 		shm_keys.erase(key->get_physical_keycode_with_modifiers());
+	// 		memcpy(shm->keys_pressed, shm_keys.ptrw(), shm_keys.size());
+	// 	}
+	// 	return;
+	// }
+
+	// Ref<InputEventMouseMotion> mouse_motion = event;
+	// if (mouse_motion.is_valid()) {
+	// 	shm->mouse_x += mouse_motion->get_relative().x;
+	// 	shm->mouse_y += mouse_motion->get_relative().y;
+	// 	return;
+	// }
+
+	// Ref<InputEventMouseButton> mouse_button = event;
+	// if (mouse_button.is_valid()) {
+	// 	if (mouse_button->is_pressed()) {
+	// 		shm->mouse_buttons_pressed[shm->mouse_buttons_pressed_length] = mouse_button->get_button_index();
+	// 	} else if (mouse_button->is_released()) {
+	// 		Vector<char> shm_mouse_buttons;
+	// 		shm_mouse_buttons.resize(shm->mouse_buttons_pressed_length);
+	// 		memcpy(shm_mouse_buttons.ptrw(), shm->mouse_buttons_pressed, shm->mouse_buttons_pressed_length);
+	// 		shm_mouse_buttons.erase(mouse_button->get_button_index());
+	// 		memcpy(shm->mouse_buttons_pressed, shm_mouse_buttons.ptrw(), shm_mouse_buttons.size());
+	// 	}
+	// 	return;
+	// }
+}
+
 bool DOOM::get_import_assets() {
 	return false;
 }
 
 void DOOM::set_import_assets(bool p_import_assets) {
 	call_deferred("import_assets");
+}
+
+bool DOOM::get_assets_ready() {
+	return assets_ready;
+}
+
+void DOOM::set_assets_ready(bool p_ready) {
 }
 
 bool DOOM::get_enabled() {
@@ -202,6 +259,7 @@ void DOOM::import_assets() {
 }
 
 void DOOM::update_doom() {
+	UtilityFunctions::print(vformat("update doom. enabled: %s, assets ready: %s", enabled, assets_ready));
 	if (enabled && assets_ready) {
 		init_doom();
 	} else {
@@ -213,15 +271,13 @@ void DOOM::update_doom() {
 }
 
 void DOOM::init_doom() {
+	UtilityFunctions::print("init_doom()");
 	exiting = false;
 
 	init_shm();
 	shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 
-	spawn_pid = fork();
-	if (spawn_pid == 0) {
-		launch_doom_executable();
-	}
+	spawn_pid = launch_doom_executable();
 
 	screen_buffer_array.resize(sizeof(screen_buffer));
 
@@ -234,8 +290,22 @@ void DOOM::init_doom() {
 	midi_thread->start(midi_func);
 }
 
-void DOOM::launch_doom_executable() {
-	CharString path_cs = ProjectSettings::get_singleton()->globalize_path(vformat("res://bin/%s", SPAWN_EXECUTABLE_NAME)).utf8();
+__pid_t DOOM::launch_doom_executable() {
+	UtilityFunctions::print("launch doom executable fn");
+	String operating_system;
+	String name = OS::get_singleton()->get_name();
+
+	if (name == "Windows" || name == "UWP") {
+		operating_system = "windows";
+	} else if (name == "macOS") {
+		operating_system = "macos";
+	} else if (name == "Linux" || name == "FreeBSD" || name == "OpenBSD" || name == "BSD") {
+		operating_system = "linux";
+	}
+
+	UtilityFunctions::print(vformat("res://addons/godot-doom-node/%s/%s", operating_system, SPAWN_EXECUTABLE_NAME));
+
+	CharString path_cs = ProjectSettings::get_singleton()->globalize_path(vformat("res://addons/godot-doom-node/%s/%s", operating_system, SPAWN_EXECUTABLE_NAME)).utf8();
 	CharString id_cs = vformat("%s", shm_id).utf8();
 	CharString wad_cs = ProjectSettings::get_singleton()->globalize_path(wad_path).utf8();
 	CharString config_dir_cs = ProjectSettings::get_singleton()->globalize_path(vformat("user://godot-doom/%s-%s/", wad_path.get_file().get_basename(), wad_hash)).utf8();
@@ -255,7 +325,16 @@ void DOOM::launch_doom_executable() {
 		NULL
 	};
 
-	execve(args[0], args, envp);
+	__pid_t pid = fork();
+	if (pid == 0) {
+		UtilityFunctions::print("bye");
+		execve(args[0], args, envp);
+		UtilityFunctions::print(vformat("what %s", args[0]));
+		exit(0);
+	}
+
+	UtilityFunctions::print(vformat("forked PID: %s", pid));
+	return pid;
 }
 
 void DOOM::midi_thread_func() {
@@ -383,6 +462,10 @@ void DOOM::midi_thread_func() {
 
 		switch (fluid_player_get_status(player)) {
 			case FLUID_PLAYER_PLAYING: {
+				if (current_midi_playback == nullptr) {
+					continue;
+				}
+
 				uint64_t ticks = Time::get_singleton()->get_ticks_usec();
 				uint64_t diff = ticks - current_midi_last_tick;
 				current_midi_last_tick = ticks;
@@ -737,8 +820,8 @@ void DOOM::start_midi_fetching() {
 
 void DOOM::update_assets_status() {
 	if (sound_fetch_complete && midi_fetch_complete) {
-		emit_signal("assets_imported");
 		assets_ready = true;
+		emit_signal("assets_imported");
 	}
 }
 

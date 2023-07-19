@@ -1,13 +1,13 @@
-#include "doomgeneric/doomtype.h"
-#include "string.h"
+#include <string.h>
 
 #include "doomgeneric/deh_str.h"
+#include "doomgeneric/doomtype.h"
 #include "doomgeneric/i_sound.h"
 #include "doomgeneric/sha1.h"
 
-#include "common.h"
-#include "shm.h"
-#include "spawn.h"
+#include "doomcommon.h"
+#include "doomshm.h"
+#include "doomspawn.h"
 
 #define SHA1_LEN 20
 #define SHA1_HEX_LEN 40

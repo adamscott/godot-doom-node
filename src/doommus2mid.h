@@ -1,5 +1,5 @@
-#ifndef MUS2MID_H
-#define MUS2MID_H
+#ifndef DOOMMUS2MID_H
+#define DOOMMUS2MID_H
 
 #include "godot_cpp/classes/object.hpp"
 #include "godot_cpp/classes/wrapped.hpp"
@@ -98,4 +98,4 @@ public:
 
 } //namespace godot
 
-#endif /* MUS2MID_H */
+#endif /* DOOMMUS2MID_H */

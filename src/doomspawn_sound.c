@@ -6,9 +6,9 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include "common.h"
-#include "shm.h"
-#include "spawn.h"
+#include "doomcommon.h"
+#include "doomshm.h"
+#include "doomspawn.h"
 
 #include "doomgeneric/deh_str.h"
 #include "doomgeneric/i_sound.h"

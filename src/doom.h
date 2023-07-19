@@ -9,6 +9,7 @@
 #include "godot_cpp/classes/audio_stream_player.hpp"
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/image_texture.hpp"
+#include "godot_cpp/classes/input_event.hpp"
 #include "godot_cpp/classes/mutex.hpp"
 #include "godot_cpp/classes/texture_rect.hpp"
 #include "godot_cpp/classes/thread.hpp"
@@ -21,8 +22,8 @@
 extern "C" {
 #include "fluidsynth.h"
 
-#include "common.h"
-#include "spawn.h"
+#include "doomcommon.h"
+#include "doomspawn.h"
 }
 
 namespace godot {
@@ -83,6 +84,7 @@ private:
 	Vector<MusicInstruction> music_instructions;
 
 	bool enabled = false;
+
 	String wad_path;
 	String soundfont_path;
 
@@ -133,7 +135,7 @@ private:
 
 	void init_doom();
 	void kill_doom();
-	void launch_doom_executable();
+	__pid_t launch_doom_executable();
 
 	void update_screen_buffer();
 	void update_sounds();
@@ -151,6 +153,8 @@ public:
 	DOOM();
 	~DOOM();
 
+	bool get_assets_ready();
+	void set_assets_ready(bool p_ready);
 	bool get_enabled();
 	void set_enabled(bool p_enabled);
 	String get_wad_path();
@@ -160,10 +164,11 @@ public:
 
 	void import_assets();
 
-	void _enter_tree() override;
-	void _exit_tree() override;
-	void _ready() override;
-	void _process(double delta) override;
+	virtual void _enter_tree() override;
+	virtual void _exit_tree() override;
+	virtual void _ready() override;
+	virtual void _process(double p_delta) override;
+	virtual void _input(const Ref<InputEvent> &event) override;
 };
 
 } // namespace godot

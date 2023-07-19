@@ -1,4 +1,4 @@
-#include <spawn.h>
+#include "doomspawn.h"
 
 #include <err.h>
 #include <errno.h>
@@ -12,8 +12,8 @@
 
 #include <doomgeneric/doomgeneric.h>
 
-#include <common.h>
-#include <shm.h>
+#include "doomcommon.h"
+#include "doomshm.h"
 
 boolean terminate = false;
 boolean start_loop = false;
@@ -33,6 +33,8 @@ void signal_handler(int signal) {
 }
 
 int main(int argc, char **argv) {
+	printf("Hello, World! from spawn\n");
+
 	if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
 		printf("Error while setting the signal handler.\n", stderr);
 		return EXIT_FAILURE;

@@ -31,6 +31,8 @@ def main():
         os.path.join(root_addons, platform, executable),
         os.path.join(root_demo_addons, platform, executable),
     )
+    os.chmod(os.path.join(root_addons, platform, executable), 0o755)
+    os.chmod(os.path.join(root_demo_addons, platform, executable), 0o755)
 
     shutil.copyfile(
         os.path.join(root_addons, "godot-doom.gdextension"),

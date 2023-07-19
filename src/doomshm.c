@@ -1,7 +1,7 @@
-#ifndef SHM_H
-#define SHM_H
+#ifndef DOOMSHM_H
+#define DOOMSHM_H
 
-#include "shm.h"
+#include "doomshm.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -12,7 +12,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include "common.h"
+#include "doomcommon.h"
 
 char shm_base_id[256];
 int shm_fd = 0;
@@ -36,4 +36,4 @@ int init_shm(char *p_id) {
 	return 0;
 }
 
-#endif /* SHM_H */
+#endif /* DOOMSHM_H */
