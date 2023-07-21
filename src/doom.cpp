@@ -68,6 +68,7 @@ extern "C" {
 
 // GodotDoomNode
 #include "doomcommon.h"
+#include "doommutex.h"
 #include "doomshm.h"
 
 // Fluidsynth
@@ -160,8 +161,16 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 
 		UtilityFunctions::print(vformat("key: %s", key));
 
+		for (int i = 0; i < shm->keys_pressed_length; i++) {
+			if (shm->keys_pressed[i] == (pressed_flag | key_pressed)) {
+				return;
+			}
+		}
+
+		mutex_lock(shm);
 		shm->keys_pressed[shm->keys_pressed_length] = pressed_flag | key_pressed;
 		shm->keys_pressed_length += 1;
+		mutex_unlock(shm);
 
 		if (key->is_pressed() && !key->is_echo() && key->get_physical_keycode() == Key::KEY_ESCAPE) {
 			Input::get_singleton()->set_mouse_mode(Input::MouseMode::MOUSE_MODE_VISIBLE);
@@ -180,15 +189,19 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 		MouseButton mouse_button_index = mouse_button->get_button_index();
 		uint32_t pressed_flag = mouse_button->is_pressed() << 31;
 
+		mutex_lock(shm);
 		shm->mouse_buttons_pressed[shm->mouse_buttons_pressed_length] = pressed_flag | mouse_button_index;
 		shm->mouse_buttons_pressed_length += 1;
+		mutex_unlock(shm);
 		return;
 	}
 
 	Ref<InputEventMouseMotion> mouse_motion = event;
 	if (mouse_motion.is_valid()) {
+		mutex_lock(shm);
 		shm->mouse_x += mouse_motion->get_relative().x;
 		shm->mouse_y += mouse_motion->get_relative().y;
+		mutex_unlock(shm);
 		return;
 	}
 }
@@ -298,7 +311,10 @@ void DOOM::init_doom() {
 	exiting = false;
 
 	init_shm();
+
+	mutex_lock(shm);
 	shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
+	mutex_unlock(shm);
 
 	spawn_pid = launch_doom_executable();
 
@@ -370,6 +386,7 @@ void DOOM::midi_thread_func() {
 		for (MusicInstruction instruction : instructions) {
 			switch (instruction.type) {
 				case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
+					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_REGISTER_SONG");
 					String sha1;
 					String midi_file;
 
@@ -395,31 +412,33 @@ void DOOM::midi_thread_func() {
 						break;
 					}
 
-					mutex->lock();
-					current_midi_path = vformat("user://godot-doom/%s-%s/%s.mid", wad_path.get_file().get_basename(), wad_hash, midi_file);
-					mutex->unlock();
+					if (midi_files.has(midi_file)) {
+						mutex->lock();
+						current_midi_file = midi_file;
+						mutex->unlock();
 
-					if (player == nullptr) {
-						player = new_fluid_player(synth);
+						if (player == nullptr) {
+							player = new_fluid_player(synth);
+						}
+
+						PackedByteArray stored_midi_file = midi_files[midi_file];
+						fluid_player_add_mem(player, stored_midi_file.ptrw(), stored_midi_file.size());
 					}
-
-					String local_midi_path = ProjectSettings::get_singleton()->globalize_path(current_midi_path);
-					const char *local_midi_path_char = local_midi_path.utf8().get_data();
-					fluid_player_add(player, local_midi_path_char);
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG: {
+					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG");
 					mutex->lock();
 					current_midi_path = "";
 					mutex->unlock();
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
+					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_PLAY_SONG");
 					if (player == nullptr) {
 						player = new_fluid_player(synth);
-						String local_midi_path = ProjectSettings::get_singleton()->globalize_path(current_midi_path);
-						const char *local_midi_path_char = local_midi_path.utf8().get_data();
-						fluid_player_add(player, local_midi_path_char);
+						PackedByteArray stored_midi_file = midi_files[current_midi_file];
+						fluid_player_add_mem(player, stored_midi_file.ptrw(), stored_midi_file.size());
 					}
 
 					current_midi_looping = instruction.looping;
@@ -430,11 +449,11 @@ void DOOM::midi_thread_func() {
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
+					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_RESUME_SONG");
 					if (player == nullptr) {
 						player = new_fluid_player(synth);
-						String local_midi_path = ProjectSettings::get_singleton()->globalize_path(current_midi_path);
-						const char *local_midi_path_char = local_midi_path.utf8().get_data();
-						fluid_player_add(player, local_midi_path_char);
+						PackedByteArray stored_midi_file = midi_files[current_midi_file];
+						fluid_player_add_mem(player, stored_midi_file.ptrw(), stored_midi_file.size());
 					}
 
 					fluid_player_seek(player, current_midi_tick);
@@ -444,16 +463,20 @@ void DOOM::midi_thread_func() {
 
 				case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC:
 				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
+					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_STOP_SONG");
 					if (player != nullptr) {
 						fluid_player_stop(player);
 						fluid_player_join(player);
 						delete_fluid_player(player);
 						fluid_synth_system_reset(synth);
 						player = nullptr;
+
+						OS::get_singleton()->delay_usec(100);
 					}
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
+					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_PAUSE_SONG");
 					if (player != nullptr) {
 						current_midi_tick = fluid_player_get_current_tick(player);
 
@@ -462,10 +485,13 @@ void DOOM::midi_thread_func() {
 						delete_fluid_player(player);
 						fluid_synth_system_reset(synth);
 						player = nullptr;
+
+						OS::get_singleton()->delay_usec(100);
 					}
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {
+					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME");
 					// current_midi_volume = instruction.volume;
 				} break;
 
@@ -484,6 +510,10 @@ void DOOM::midi_thread_func() {
 			return;
 		}
 		mutex->unlock();
+
+		if (player == nullptr) {
+			continue;
+		}
 
 		switch (fluid_player_get_status(player)) {
 			case FLUID_PLAYER_PLAYING: {
@@ -699,9 +729,7 @@ void DOOM::midi_fetching_thread_func() {
 			continue;
 		}
 
-		Ref<FileAccess> mid = FileAccess::open(midi_file_path, FileAccess::ModeFlags::WRITE);
-		mid->store_buffer(midi_output);
-		mid->close();
+		midi_files[key] = midi_output;
 	}
 
 	call_deferred("midi_fetching_thread_end");
@@ -1010,7 +1038,9 @@ void DOOM::doom_thread_func() {
 		}
 		kill(spawn_pid, SIGUSR1);
 
+		mutex_lock(shm);
 		shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
+		mutex_unlock(shm);
 
 		// // Let's wait for the shared memory to be ready
 		while (!shm->ready) {
@@ -1025,26 +1055,39 @@ void DOOM::doom_thread_func() {
 		}
 		// The shared memory is ready
 		// Screenbuffer
+		mutex_lock(shm);
 		memcpy(screen_buffer, shm->screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
+		mutex_unlock(shm);
+
 		// Sounds
 		for (int i = 0; i < shm->sound_instructions_length; i++) {
+			mutex_lock(shm);
 			SoundInstruction instruction = shm->sound_instructions[i];
+			mutex_unlock(shm);
 			sound_instructions.append(instruction);
 		}
+		mutex_lock(shm);
 		shm->sound_instructions_length = 0;
+		mutex_unlock(shm);
 
 		// Music
 		for (int i = 0; i < shm->music_instructions_length; i++) {
+			mutex_lock(shm);
 			MusicInstruction instruction = shm->music_instructions[i];
+			mutex_unlock(shm);
 			music_instructions.append(instruction);
 		}
+		mutex_lock(shm);
 		shm->music_instructions_length = 0;
+		mutex_unlock(shm);
 
 		// Let's sleep the time Doom asks
 		OS::get_singleton()->delay_usec(shm->sleep_ms * 1000);
 
 		// Reset the shared memory
+		mutex_lock(shm);
 		shm->ready = false;
+		mutex_unlock(shm);
 
 		if (exiting) {
 			return;

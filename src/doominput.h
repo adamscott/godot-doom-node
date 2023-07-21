@@ -1,6 +1,10 @@
 #ifndef DOOMINPUT_H
 #define DOOMINPUT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Took from "core/os/keyboard.h"
 typedef enum Key {
 	NONE = 0,
@@ -213,5 +217,9 @@ typedef enum Key {
 	GDDOOM_KEY_YEN = 0x00A5,
 	GDDOOM_KEY_SECTION = 0x00A7,
 } Key;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DOOMINPUT_H */

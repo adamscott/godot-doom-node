@@ -96,6 +96,8 @@ private:
 	uint32_t current_midi_volume = 0;
 	uint32_t len_asked = 0;
 	uint64_t current_midi_last_tick = 0;
+	Dictionary midi_files;
+	String current_midi_file;
 
 	fluid_settings_t *settings;
 	fluid_synth_t *synth;

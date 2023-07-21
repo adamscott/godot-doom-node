@@ -1,6 +1,10 @@
 #ifndef DOOMCOMMON_H
 #define DOOMCOMMON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #include "doomgeneric/doomgeneric.h"
@@ -66,10 +70,15 @@ typedef struct SharedMemory {
 	uint8_t terminate : 1;
 	uint8_t ready : 1;
 	uint8_t init : 1;
+	uint8_t lock : 1;
 	uint8_t sound_instructions_length;
 	SoundInstruction sound_instructions[UINT8_MAX];
 	uint8_t music_instructions_length;
 	MusicInstruction music_instructions[UINT8_MAX];
 } SharedMemory;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DOOMCOMMON_H */

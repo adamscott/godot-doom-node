@@ -17,6 +17,7 @@
 
 #include "doomcommon.h"
 #include "doominput.h"
+#include "doommutex.h"
 #include "doomshm.h"
 
 boolean terminate = false;
@@ -73,7 +74,9 @@ int main(int argc, char **argv) {
 
 	doomgeneric_Create(new_argc, new_argv);
 
+	mutex_lock(shm);
 	shm->init = true;
+	mutex_unlock(shm);
 
 	while (true) {
 		if (terminate) {
@@ -92,21 +95,22 @@ int main(int argc, char **argv) {
 }
 
 void tick() {
-	// printf("tick! terminate? %b\n", shm->terminate);
+	mutex_lock(shm);
 	if (shm->terminate) {
+		mutex_unlock(shm);
 		terminate = true;
 		return;
 	}
-	// printf("doomtick\n");
+	mutex_unlock(shm);
+
 	doomgeneric_Tick();
+
+	mutex_lock(shm);
 	shm->ready = true;
-	// printf("after doomtick\n");
+	mutex_unlock(shm);
 }
 
-void DG_Init() {
-	// printf("DG_Init()\n");
-	// shm->init = true;
-}
+void DG_Init() {}
 
 void DG_DrawFrame() {
 	unsigned char screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA];
@@ -118,13 +122,17 @@ void DG_DrawFrame() {
 		buffer[i + 2] = screen_buffer[i + 0];
 		buffer[i + 3] = 255 - screen_buffer[i + 3];
 	}
+
+	mutex_lock(shm);
 	memcpy(shm->screen_buffer, buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA);
+	mutex_unlock(shm);
 }
 
 void DG_SleepMs(uint32_t ms) {
-	// shm->init = true;
-	// printf("DG_SleepMs(%d)\n", ms);
+	mutex_lock(shm);
 	shm->sleep_ms = ms;
+	mutex_unlock(shm);
+
 	usleep(ms * 1000);
 }
 
@@ -148,10 +156,14 @@ int DG_GetKey(int *pressed, unsigned char *key) {
 
 		printf("key %d, pressed: %d\n", *(uint8_t *)key, *pressed);
 
+		mutex_lock(shm);
 		shm->keys_pressed_length -= 1;
+		mutex_unlock(shm);
 		return true;
 	}
+	mutex_lock(shm);
 	shm->keys_pressed_length = 0;
+	mutex_unlock(shm);
 
 	return false;
 
@@ -168,10 +180,14 @@ int DG_GetKey(int *pressed, unsigned char *key) {
 			}
 		}
 
+		mutex_lock(shm);
 		shm->mouse_buttons_pressed_length -= 1;
+		mutex_unlock(shm);
 		return true;
 	}
+	mutex_lock(shm);
 	shm->mouse_buttons_pressed_length = 0;
+	mutex_unlock(shm);
 
 	return false;
 }
@@ -182,7 +198,9 @@ void DG_SetWindowTitle(const char *title) {
 		printf("WARN: Could not copy window title \"%s\", as it's longer than 255 characters.", title);
 		return;
 	}
+	mutex_lock(shm);
 	strcpy(shm->window_title, title);
+	mutex_unlock(shm);
 }
 
 unsigned char convert_to_doom_key(Key p_doom_key) {
