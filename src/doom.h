@@ -140,8 +140,9 @@ private:
 	void update_screen_buffer();
 	void update_sounds();
 	void update_music();
-
 	void update_doom();
+
+	void on_focus_entered();
 
 	bool get_import_assets();
 	void set_import_assets(bool p_import_assets);
@@ -169,6 +170,7 @@ public:
 	virtual void _ready() override;
 	virtual void _process(double p_delta) override;
 	virtual void _input(const Ref<InputEvent> &event) override;
+	virtual void _gui_input(const Ref<InputEvent> &event) override;
 };
 
 } // namespace godot

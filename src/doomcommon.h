@@ -56,9 +56,9 @@ typedef struct SharedMemory {
 	uint64_t ticks_msec;
 	unsigned char *screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
 	char window_title[UINT8_MAX];
-	char keys_pressed[UINT8_MAX];
+	uint32_t keys_pressed[UINT8_MAX];
 	uint8_t keys_pressed_length;
-	char mouse_buttons_pressed[UINT8_MAX];
+	uint32_t mouse_buttons_pressed[UINT8_MAX];
 	uint8_t mouse_buttons_pressed_length;
 	float mouse_x;
 	float mouse_y;

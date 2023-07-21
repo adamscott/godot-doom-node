@@ -21,6 +21,7 @@
 #include "godot_cpp/classes/global_constants.hpp"
 #include "godot_cpp/classes/hashing_context.hpp"
 #include "godot_cpp/classes/image_texture.hpp"
+#include "godot_cpp/classes/input.hpp"
 #include "godot_cpp/classes/input_event.hpp"
 #include "godot_cpp/classes/input_event_key.hpp"
 #include "godot_cpp/classes/input_event_mouse_button.hpp"
@@ -100,6 +101,7 @@ void DOOM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("wad_thread_end"), &DOOM::wad_thread_end);
 	ClassDB::bind_method(D_METHOD("sound_fetching_thread_end"), &DOOM::sound_fetching_thread_end);
 	ClassDB::bind_method(D_METHOD("midi_fetching_thread_end"), &DOOM::midi_fetching_thread_end);
+	ClassDB::bind_method(D_METHOD("on_focus_entered"), &DOOM::on_focus_entered);
 
 	ADD_GROUP("DOOM", "doom_");
 	ADD_GROUP("Assets", "assets_");
@@ -128,6 +130,8 @@ void DOOM::_bind_methods() {
 void DOOM::_ready() {
 	img_texture.instantiate();
 	set_texture(img_texture);
+
+	connect("focus_entered", Callable(this, "on_focus_entered"));
 }
 
 void DOOM::_enter_tree() {
@@ -144,40 +148,59 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 		return;
 	}
 
-	// Ref<InputEventKey> key = event;
-	// if (key.is_valid()) {
-	// 	if (key->is_pressed()) {
-	// 		shm->keys_pressed[shm->keys_pressed_length] = key->get_physical_keycode_with_modifiers();
-	// 	} else if (key->is_released()) {
-	// 		Vector<char> shm_keys;
-	// 		shm_keys.resize(shm->keys_pressed_length);
-	// 		memcpy(shm_keys.ptrw(), shm->keys_pressed, shm->keys_pressed_length);
-	// 		shm_keys.erase(key->get_physical_keycode_with_modifiers());
-	// 		memcpy(shm->keys_pressed, shm_keys.ptrw(), shm_keys.size());
-	// 	}
-	// 	return;
-	// }
+	Ref<InputEventKey> key = event;
+	if (key.is_valid()) {
+		if (key->is_echo()) {
+			get_viewport()->set_input_as_handled();
+			return;
+		}
 
-	// Ref<InputEventMouseMotion> mouse_motion = event;
-	// if (mouse_motion.is_valid()) {
-	// 	shm->mouse_x += mouse_motion->get_relative().x;
-	// 	shm->mouse_y += mouse_motion->get_relative().y;
-	// 	return;
-	// }
+		Key key_pressed = key->get_physical_keycode();
+		uint32_t pressed_flag = key->is_pressed() << 31;
 
-	// Ref<InputEventMouseButton> mouse_button = event;
-	// if (mouse_button.is_valid()) {
-	// 	if (mouse_button->is_pressed()) {
-	// 		shm->mouse_buttons_pressed[shm->mouse_buttons_pressed_length] = mouse_button->get_button_index();
-	// 	} else if (mouse_button->is_released()) {
-	// 		Vector<char> shm_mouse_buttons;
-	// 		shm_mouse_buttons.resize(shm->mouse_buttons_pressed_length);
-	// 		memcpy(shm_mouse_buttons.ptrw(), shm->mouse_buttons_pressed, shm->mouse_buttons_pressed_length);
-	// 		shm_mouse_buttons.erase(mouse_button->get_button_index());
-	// 		memcpy(shm->mouse_buttons_pressed, shm_mouse_buttons.ptrw(), shm_mouse_buttons.size());
-	// 	}
-	// 	return;
-	// }
+		UtilityFunctions::print(vformat("key: %s", key));
+
+		shm->keys_pressed[shm->keys_pressed_length] = pressed_flag | key_pressed;
+		shm->keys_pressed_length += 1;
+
+		if (key->is_pressed() && !key->is_echo() && key->get_physical_keycode() == Key::KEY_ESCAPE) {
+			Input::get_singleton()->set_mouse_mode(Input::MouseMode::MOUSE_MODE_VISIBLE);
+		}
+
+		get_viewport()->set_input_as_handled();
+		return;
+	}
+
+	Ref<InputEventMouseButton> mouse_button = event;
+	if (mouse_button.is_valid()) {
+		if (mouse_button->is_pressed()) {
+			grab_focus();
+		}
+
+		MouseButton mouse_button_index = mouse_button->get_button_index();
+		uint32_t pressed_flag = mouse_button->is_pressed() << 31;
+
+		shm->mouse_buttons_pressed[shm->mouse_buttons_pressed_length] = pressed_flag | mouse_button_index;
+		shm->mouse_buttons_pressed_length += 1;
+		return;
+	}
+
+	Ref<InputEventMouseMotion> mouse_motion = event;
+	if (mouse_motion.is_valid()) {
+		shm->mouse_x += mouse_motion->get_relative().x;
+		shm->mouse_y += mouse_motion->get_relative().y;
+		return;
+	}
+}
+
+void DOOM::_gui_input(const Ref<InputEvent> &event) {
+	if (spawn_pid == 0 || shm == nullptr) {
+		return;
+	}
+}
+
+void DOOM::on_focus_entered() {
+	Input::get_singleton()->set_mouse_mode(Input::MouseMode::MOUSE_MODE_CAPTURED);
 }
 
 bool DOOM::get_import_assets() {
@@ -425,6 +448,7 @@ void DOOM::midi_thread_func() {
 						fluid_player_stop(player);
 						fluid_player_join(player);
 						delete_fluid_player(player);
+						fluid_synth_system_reset(synth);
 						player = nullptr;
 					}
 				} break;
@@ -436,6 +460,7 @@ void DOOM::midi_thread_func() {
 						fluid_player_stop(player);
 						fluid_player_join(player);
 						delete_fluid_player(player);
+						fluid_synth_system_reset(synth);
 						player = nullptr;
 					}
 				} break;
@@ -1058,6 +1083,8 @@ DOOM::DOOM() {
 	synth = new_fluid_synth(settings);
 	fluid_synth_set_gain(synth, 0.8f);
 	player = new_fluid_player(synth);
+
+	set_focus_mode(Control::FocusMode::FOCUS_ALL);
 }
 
 DOOM::~DOOM() {

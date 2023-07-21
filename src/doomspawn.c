@@ -1,5 +1,6 @@
 #include "doomspawn.h"
 
+#include <ctype.h>
 #include <err.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -10,9 +11,12 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include <doomgeneric/doomgeneric.h>
+#include "doomgeneric/d_mode.h"
+#include "doomgeneric/doomgeneric.h"
+#include "doomgeneric/doomkeys.h"
 
 #include "doomcommon.h"
+#include "doominput.h"
 #include "doomshm.h"
 
 boolean terminate = false;
@@ -24,6 +28,11 @@ void signal_handler(int signal) {
 		case SIGUSR1: {
 			// printf("start_loop = true\n");
 			start_loop = true;
+		} break;
+
+		case SIGSEGV: {
+			printf("SIGSEGV :O");
+			exit(EXIT_FAILURE);
 		} break;
 
 		default: {
@@ -132,7 +141,39 @@ uint32_t DG_GetTicksMs() {
 }
 
 int DG_GetKey(int *pressed, unsigned char *key) {
-	return 0;
+	if (shm->keys_pressed_length > 0) {
+		uint32_t key_pressed = shm->keys_pressed[shm->keys_pressed_length - 1];
+		*pressed = key_pressed >> 31;
+		*key = convert_to_doom_key(key_pressed & ~(1 << 31));
+
+		printf("key %d, pressed: %d\n", *(uint8_t *)key, *pressed);
+
+		shm->keys_pressed_length -= 1;
+		return true;
+	}
+	shm->keys_pressed_length = 0;
+
+	return false;
+
+	if (shm->mouse_buttons_pressed_length > 0) {
+		uint32_t mouse_button_pressed = shm->mouse_buttons_pressed[shm->mouse_buttons_pressed_length - 1];
+		*pressed = mouse_button_pressed >> 31;
+
+		switch (~(1 << 31) & mouse_button_pressed) {
+			case 0: {
+				*key = KEY_FIRE;
+			} break;
+
+			default: {
+			}
+		}
+
+		shm->mouse_buttons_pressed_length -= 1;
+		return true;
+	}
+	shm->mouse_buttons_pressed_length = 0;
+
+	return false;
 }
 
 void DG_SetWindowTitle(const char *title) {
@@ -142,4 +183,142 @@ void DG_SetWindowTitle(const char *title) {
 		return;
 	}
 	strcpy(shm->window_title, title);
+}
+
+unsigned char convert_to_doom_key(Key p_doom_key) {
+	switch (p_doom_key) {
+		case GDDOOM_KEY_A:
+		case GDDOOM_KEY_B:
+		case GDDOOM_KEY_C:
+		case GDDOOM_KEY_D:
+		case GDDOOM_KEY_E:
+		case GDDOOM_KEY_F:
+		case GDDOOM_KEY_G:
+		case GDDOOM_KEY_H:
+		case GDDOOM_KEY_I:
+		case GDDOOM_KEY_J:
+		case GDDOOM_KEY_K:
+		case GDDOOM_KEY_L:
+		case GDDOOM_KEY_M:
+		case GDDOOM_KEY_N:
+		case GDDOOM_KEY_O:
+		case GDDOOM_KEY_P:
+		case GDDOOM_KEY_Q:
+		case GDDOOM_KEY_R:
+		case GDDOOM_KEY_S:
+		case GDDOOM_KEY_T:
+		case GDDOOM_KEY_U:
+		case GDDOOM_KEY_V:
+		case GDDOOM_KEY_W:
+		case GDDOOM_KEY_X:
+		case GDDOOM_KEY_Y:
+		case GDDOOM_KEY_Z: {
+			return toupper(p_doom_key);
+		}
+
+		case GDDOOM_KEY_F1: {
+			return KEY_F1;
+		}
+		case GDDOOM_KEY_F2: {
+			return KEY_F2;
+		}
+		case GDDOOM_KEY_F3: {
+			return KEY_F3;
+		}
+		case GDDOOM_KEY_F4: {
+			return KEY_F4;
+		}
+		case GDDOOM_KEY_F5: {
+			return KEY_F5;
+		}
+		case GDDOOM_KEY_F6: {
+			return KEY_F6;
+		}
+		case GDDOOM_KEY_F7: {
+			return KEY_F7;
+		}
+		case GDDOOM_KEY_F8: {
+			return KEY_F8;
+		}
+		case GDDOOM_KEY_F9: {
+			return KEY_F9;
+		}
+		case GDDOOM_KEY_F10: {
+			return KEY_F10;
+		}
+		case GDDOOM_KEY_F11: {
+			return KEY_F11;
+		}
+		case GDDOOM_KEY_F12: {
+			return KEY_F12;
+		}
+
+		case GDDOOM_KEY_ENTER: {
+			return KEY_ENTER;
+		}
+		case GDDOOM_KEY_ESCAPE: {
+			return KEY_ESCAPE;
+		}
+		case GDDOOM_KEY_TAB: {
+			return KEY_TAB;
+		}
+		case GDDOOM_KEY_LEFT: {
+			return KEY_LEFTARROW;
+		}
+		case GDDOOM_KEY_UP: {
+			return KEY_UPARROW;
+		}
+		case GDDOOM_KEY_DOWN: {
+			return KEY_DOWNARROW;
+		}
+		case GDDOOM_KEY_RIGHT: {
+			return KEY_RIGHTARROW;
+		}
+		case GDDOOM_KEY_BACKSPACE: {
+			return KEY_BACKSPACE;
+		}
+		case GDDOOM_KEY_PAUSE: {
+			return KEY_PAUSE;
+		}
+
+		case GDDOOM_KEY_SHIFT: {
+			return KEY_RSHIFT;
+		}
+		case GDDOOM_KEY_ALT: {
+			return KEY_RALT;
+		}
+		case GDDOOM_KEY_CTRL: {
+			return KEY_FIRE;
+		}
+		case GDDOOM_KEY_COMMA: {
+			return KEY_STRAFE_L;
+		}
+		case GDDOOM_KEY_PERIOD: {
+			return KEY_STRAFE_R;
+		}
+		case GDDOOM_KEY_SPACE: {
+			return KEY_USE;
+		}
+		case GDDOOM_KEY_PLUS:
+		case GDDOOM_KEY_MINUS: {
+			return KEY_MINUS;
+		}
+		case GDDOOM_KEY_EQUAL: {
+			return KEY_EQUALS;
+		}
+
+		case GDDOOM_KEY_KEY_0:
+		case GDDOOM_KEY_KEY_1:
+		case GDDOOM_KEY_KEY_2:
+		case GDDOOM_KEY_KEY_3:
+		case GDDOOM_KEY_KEY_4:
+		case GDDOOM_KEY_KEY_5:
+		case GDDOOM_KEY_KEY_6:
+		case GDDOOM_KEY_KEY_7:
+		case GDDOOM_KEY_KEY_8:
+		case GDDOOM_KEY_KEY_9:
+		default: {
+			return p_doom_key;
+		}
+	}
 }
