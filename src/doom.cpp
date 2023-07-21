@@ -361,9 +361,7 @@ __pid_t DOOM::_launch_doom_executable() {
 
 	__pid_t pid = fork();
 	if (pid == 0) {
-		UtilityFunctions::print("bye");
 		execve(args[0], args, envp);
-		UtilityFunctions::print(vformat("what %s", args[0]));
 		exit(0);
 	}
 	return pid;
@@ -691,38 +689,6 @@ void DOOM::_midi_fetching_thread_func() {
 
 		PackedByteArray file_array = info["data"];
 		PackedByteArray midi_output;
-
-		_mutex->lock();
-		String hash_dir = vformat("user://godot-doom/%s-%s", _wad_path.get_file().get_basename(), _wad_hash);
-		_mutex->unlock();
-
-		String midi_file_name = vformat("%s.mid", key);
-		String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
-		String wav_file_name = vformat("%s.wav", key);
-		String wav_file_path = vformat("%s/%s", hash_dir, wav_file_name);
-
-		if (FileAccess::file_exists(midi_file_path) && FileAccess::file_exists(wav_file_path)) {
-			// The file exist, we can skip processing it
-			break;
-		}
-
-		// The files are incomplete, deleting them is preferrable
-		Ref<DirAccess> godot_doom_dir = DirAccess::open("user://godot-doom");
-		if (!godot_doom_dir->dir_exists(hash_dir)) {
-			godot_doom_dir->make_dir(hash_dir);
-		}
-
-		if (FileAccess::file_exists(midi_file_path)) {
-			godot_doom_dir->remove(vformat("%s/%s", hash_dir, midi_file_name));
-		}
-		if (FileAccess::file_exists(wav_file_path)) {
-			godot_doom_dir->remove(vformat("%s/%s", hash_dir, wav_file_name));
-		}
-
-		String midi_file_path_globalized = ProjectSettings::get_singleton()->globalize_path(midi_file_path);
-		char *midi_file_path_globalized_char = strdup(midi_file_path_globalized.utf8().get_data());
-		String wav_file_path_globalized = ProjectSettings::get_singleton()->globalize_path(wav_file_path);
-		char *wav_file_path_globalized_char = strdup(wav_file_path_globalized.utf8().get_data());
 
 		// Mus to midi conversion
 		bool converted = !DOOMMus2Mid::get_singleton()->mus2mid(file_array, midi_output);
