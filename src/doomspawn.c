@@ -23,6 +23,10 @@
 boolean terminate = false;
 boolean start_loop = false;
 
+boolean left_mouse_button_pressed = false;
+boolean middle_mouse_button_pressed = false;
+boolean right_mouse_button_pressed = false;
+
 void signal_handler(int signal) {
 	// printf("signal_handler %d\n", signal);
 	switch (signal) {
@@ -166,14 +170,39 @@ int DG_GetKey(int *pressed, unsigned char *key) {
 	mutex_unlock(shm);
 
 	return false;
+}
+
+void DG_GetMouseState(int *mouse_x, int *mouse_y, int *mouse_button_bitfield) {
+	*mouse_x = shm->mouse_x;
+	*mouse_y = shm->mouse_y;
+
+	mutex_lock(shm);
+	shm->mouse_x = 0;
+	shm->mouse_y = 0;
+	mutex_unlock(shm);
+
+	boolean pressed = false;
+	int8_t index = 0;
 
 	if (shm->mouse_buttons_pressed_length > 0) {
 		uint32_t mouse_button_pressed = shm->mouse_buttons_pressed[shm->mouse_buttons_pressed_length - 1];
-		*pressed = mouse_button_pressed >> 31;
+		pressed = mouse_button_pressed >> 31;
+		index = ~(1 << 31) & mouse_button_pressed;
 
-		switch (~(1 << 31) & mouse_button_pressed) {
-			case 0: {
-				*key = KEY_FIRE;
+		switch (index) {
+			// left
+			case 1: {
+				left_mouse_button_pressed = pressed;
+			} break;
+
+			// right
+			case 2: {
+				right_mouse_button_pressed = pressed;
+			} break;
+
+			// middle
+			case 3: {
+				middle_mouse_button_pressed = pressed;
 			} break;
 
 			default: {
@@ -183,13 +212,12 @@ int DG_GetKey(int *pressed, unsigned char *key) {
 		mutex_lock(shm);
 		shm->mouse_buttons_pressed_length -= 1;
 		mutex_unlock(shm);
-		return true;
 	}
 	mutex_lock(shm);
 	shm->mouse_buttons_pressed_length = 0;
 	mutex_unlock(shm);
 
-	return false;
+	*mouse_button_bitfield = left_mouse_button_pressed | right_mouse_button_pressed << 1 | middle_mouse_button_pressed << 2;
 }
 
 void DG_SetWindowTitle(const char *title) {
