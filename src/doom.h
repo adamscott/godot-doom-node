@@ -6,7 +6,6 @@
 #include "doomgeneric/doomgeneric.h"
 #include "godot_cpp/classes/audio_stream_generator.hpp"
 #include "godot_cpp/classes/audio_stream_generator_playback.hpp"
-#include "godot_cpp/classes/audio_stream_player.hpp"
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/image_texture.hpp"
 #include "godot_cpp/classes/input_event.hpp"
@@ -56,98 +55,93 @@ private:
 		String name;
 	};
 
-	WadSignature signature;
-	Dictionary files;
+	WadSignature _wad_signature;
+	Dictionary _wad_files;
 
-	static int last_id;
-	int id;
-	char shm_id[255];
+	static int _last_doom_instance_id;
+	int _doom_instance_id;
+	char _shm_id[255];
 
-	bool exiting = false;
-	bool assets_ready = false;
-	bool sound_fetch_complete = false;
-	bool midi_fetch_complete = false;
+	bool _exiting = false;
+	bool _assets_ready = false;
+	bool _sound_fetch_complete = false;
+	bool _midi_fetch_complete = false;
 
-	Ref<Mutex> mutex;
-	Ref<Thread> doom_thread = nullptr;
-	Ref<Thread> midi_thread = nullptr;
-	Ref<Thread> wad_thread = nullptr;
+	Ref<Mutex> _mutex;
+	Ref<Thread> _doom_thread = nullptr;
+	Ref<Thread> _midi_thread = nullptr;
+	Ref<Thread> _wad_thread = nullptr;
 	Ref<Thread> sound_fetching_thread = nullptr;
 	Ref<Thread> midi_fetching_thread = nullptr;
 
-	SharedMemory *shm;
-	__pid_t spawn_pid;
-	int shm_fd;
+	SharedMemory *_shm;
+	__pid_t _spawn_pid;
+	int _shm_fd;
 
-	Vector<String> uuids;
-	Vector<SoundInstruction> sound_instructions;
-	Vector<MusicInstruction> music_instructions;
+	Vector<String> _uuids;
+	Vector<SoundInstruction> _sound_instructions;
+	Vector<MusicInstruction> _music_instructions;
 
-	bool enabled = false;
+	bool _enabled = false;
 
-	String wad_path;
-	String soundfont_path;
+	String _wad_path;
+	String _soundfont_path;
 
-	String current_midi_path;
+	String _current_midi_path;
 	bool current_midi_playing = false;
-	uint32_t current_midi_tick = 0;
+	uint32_t _current_midi_tick = 0;
 	bool current_midi_pause = false;
-	bool current_midi_looping = false;
-	uint32_t current_midi_volume = 0;
-	uint32_t len_asked = 0;
-	uint64_t current_midi_last_tick = 0;
-	Dictionary midi_files;
-	String current_midi_file;
+	bool _current_midi_looping = false;
+	uint32_t _current_midi_volume = 0;
+	uint64_t _current_midi_last_tick_usec = 0;
+	Dictionary _stored_midi_files;
+	String _current_midi_file;
 
-	fluid_settings_t *settings;
-	fluid_synth_t *synth;
-	int synth_id = -1;
-	fluid_player_t *player;
-	fluid_audio_driver_t *audio_driver;
+	fluid_settings_t *_fluid_settings;
+	fluid_synth_t *_fluid_synth;
+	int _fluid_synth_id = -1;
+	fluid_player_t *_fluid_player;
 
-	Ref<AudioStreamGenerator> current_midi_stream = nullptr;
-	Ref<AudioStreamGeneratorPlayback> current_midi_playback = nullptr;
+	Ref<AudioStreamGenerator> _current_midi_stream = nullptr;
+	Ref<AudioStreamGeneratorPlayback> _current_midi_playback = nullptr;
 
-	String wad_name;
-	String wad_hash;
+	String _wad_name;
+	String _wad_hash;
 
 	// TextureRect *texture_rect;
-	Ref<ImageTexture> img_texture = nullptr;
-	unsigned char screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
-	PackedByteArray screen_buffer_array;
+	Ref<ImageTexture> _img_texture = nullptr;
+	unsigned char _screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
+	PackedByteArray _screen_buffer_array;
 
-	void init_shm();
+	void _init_shm();
 
-	void doom_thread_func();
-	void wad_thread_func();
-	void sound_fetching_thread_func();
-	void midi_fetching_thread_func();
-	void midi_thread_func();
+	void _doom_thread_func();
+	void _wad_thread_func();
+	void _sound_fetching_thread_func();
+	void _midi_fetching_thread_func();
+	void _midi_thread_func();
 
-	void append_sounds();
-	void append_music();
+	void _append_sounds();
+	void _append_music();
 
-	void wad_thread_end();
-	void sound_fetching_thread_end();
-	void midi_fetching_thread_end();
+	void _wad_thread_end();
+	void _sound_fetching_thread_end();
+	void _midi_fetching_thread_end();
 
-	void start_sound_fetching();
-	void start_midi_fetching();
-	void update_assets_status();
+	void _start_sound_fetching();
+	void _start_midi_fetching();
+	void _update_assets_status();
 
-	void init_doom();
-	void kill_doom();
-	__pid_t launch_doom_executable();
+	void _init_doom();
+	void _kill_doom();
+	__pid_t _launch_doom_executable();
 
-	void update_screen_buffer();
-	void update_sounds();
-	void update_music();
-	void update_doom();
+	void _update_screen_buffer();
+	void _update_sounds();
+	void _update_music();
+	void _update_doom();
 
-	void on_focus_entered();
-
-	bool get_import_assets();
-	void set_import_assets(bool p_import_assets);
+	void _on_focus_entered();
 
 protected:
 	static void _bind_methods();
@@ -156,6 +150,8 @@ public:
 	DOOM();
 	~DOOM();
 
+	bool get_import_assets();
+	void set_import_assets(bool p_import_assets);
 	bool get_assets_ready();
 	void set_assets_ready(bool p_ready);
 	bool get_enabled();

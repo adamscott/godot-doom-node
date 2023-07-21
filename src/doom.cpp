@@ -93,16 +93,17 @@ void DOOM::_bind_methods() {
 	// Signals.
 	ADD_SIGNAL(MethodInfo("assets_imported"));
 
-	ClassDB::bind_method(D_METHOD("doom_thread_func"), &DOOM::doom_thread_func);
-	ClassDB::bind_method(D_METHOD("wad_thread_func"), &DOOM::wad_thread_func);
-	ClassDB::bind_method(D_METHOD("sound_fetching_thread_func"), &DOOM::sound_fetching_thread_func);
-	ClassDB::bind_method(D_METHOD("midi_fetching_thread_func"), &DOOM::midi_fetching_thread_func);
-	ClassDB::bind_method(D_METHOD("midi_thread_func"), &DOOM::midi_thread_func);
+	ClassDB::bind_method(D_METHOD("_doom_thread_func"), &DOOM::_doom_thread_func);
+	ClassDB::bind_method(D_METHOD("_wad_thread_func"), &DOOM::_wad_thread_func);
+	ClassDB::bind_method(D_METHOD("_sound_fetching_thread_func"), &DOOM::_sound_fetching_thread_func);
+	ClassDB::bind_method(D_METHOD("_midi_fetching_thread_func"), &DOOM::_midi_fetching_thread_func);
+	ClassDB::bind_method(D_METHOD("_midi_thread_func"), &DOOM::_midi_thread_func);
+	ClassDB::bind_method(D_METHOD("_wad_thread_end"), &DOOM::_wad_thread_end);
+	ClassDB::bind_method(D_METHOD("_sound_fetching_thread_end"), &DOOM::_sound_fetching_thread_end);
+	ClassDB::bind_method(D_METHOD("_midi_fetching_thread_end"), &DOOM::_midi_fetching_thread_end);
+	ClassDB::bind_method(D_METHOD("_on_focus_entered"), &DOOM::_on_focus_entered);
+
 	ClassDB::bind_method(D_METHOD("import_assets"), &DOOM::import_assets);
-	ClassDB::bind_method(D_METHOD("wad_thread_end"), &DOOM::wad_thread_end);
-	ClassDB::bind_method(D_METHOD("sound_fetching_thread_end"), &DOOM::sound_fetching_thread_end);
-	ClassDB::bind_method(D_METHOD("midi_fetching_thread_end"), &DOOM::midi_fetching_thread_end);
-	ClassDB::bind_method(D_METHOD("on_focus_entered"), &DOOM::on_focus_entered);
 
 	ADD_GROUP("DOOM", "doom_");
 	ADD_GROUP("Assets", "assets_");
@@ -129,23 +130,22 @@ void DOOM::_bind_methods() {
 }
 
 void DOOM::_ready() {
-	img_texture.instantiate();
-	set_texture(img_texture);
+	_img_texture.instantiate();
+	set_texture(_img_texture);
 
-	connect("focus_entered", Callable(this, "on_focus_entered"));
+	connect("focus_entered", Callable(this, "_on_focus_entered"));
 }
 
-void DOOM::_enter_tree() {
-}
+void DOOM::_enter_tree() {}
 
 void DOOM::_exit_tree() {
-	if (enabled) {
-		kill_doom();
+	if (_enabled) {
+		_kill_doom();
 	}
 }
 
 void DOOM::_input(const Ref<InputEvent> &event) {
-	if (spawn_pid == 0 || shm == nullptr) {
+	if (_spawn_pid == 0 || _shm == nullptr) {
 		return;
 	}
 
@@ -159,18 +159,16 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 		Key key_pressed = key->get_physical_keycode();
 		uint32_t pressed_flag = key->is_pressed() << 31;
 
-		UtilityFunctions::print(vformat("key: %s", key));
-
-		for (int i = 0; i < shm->keys_pressed_length; i++) {
-			if (shm->keys_pressed[i] == (pressed_flag | key_pressed)) {
+		for (int i = 0; i < _shm->keys_pressed_length; i++) {
+			if (_shm->keys_pressed[i] == (pressed_flag | key_pressed)) {
 				return;
 			}
 		}
 
-		mutex_lock(shm);
-		shm->keys_pressed[shm->keys_pressed_length] = pressed_flag | key_pressed;
-		shm->keys_pressed_length += 1;
-		mutex_unlock(shm);
+		mutex_lock(_shm);
+		_shm->keys_pressed[_shm->keys_pressed_length] = pressed_flag | key_pressed;
+		_shm->keys_pressed_length += 1;
+		mutex_unlock(_shm);
 
 		if (key->is_pressed() && !key->is_echo() && key->get_physical_keycode() == Key::KEY_ESCAPE) {
 			Input::get_singleton()->set_mouse_mode(Input::MouseMode::MOUSE_MODE_VISIBLE);
@@ -189,30 +187,30 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 		MouseButton mouse_button_index = mouse_button->get_button_index();
 		uint32_t pressed_flag = mouse_button->is_pressed() << 31;
 
-		mutex_lock(shm);
-		shm->mouse_buttons_pressed[shm->mouse_buttons_pressed_length] = pressed_flag | mouse_button_index;
-		shm->mouse_buttons_pressed_length += 1;
-		mutex_unlock(shm);
+		mutex_lock(_shm);
+		_shm->mouse_buttons_pressed[_shm->mouse_buttons_pressed_length] = pressed_flag | mouse_button_index;
+		_shm->mouse_buttons_pressed_length += 1;
+		mutex_unlock(_shm);
 		return;
 	}
 
 	Ref<InputEventMouseMotion> mouse_motion = event;
 	if (mouse_motion.is_valid()) {
-		mutex_lock(shm);
-		shm->mouse_x += mouse_motion->get_relative().x;
-		shm->mouse_y += mouse_motion->get_relative().y;
-		mutex_unlock(shm);
+		mutex_lock(_shm);
+		_shm->mouse_x += mouse_motion->get_relative().x;
+		_shm->mouse_y += mouse_motion->get_relative().y;
+		mutex_unlock(_shm);
 		return;
 	}
 }
 
 void DOOM::_gui_input(const Ref<InputEvent> &event) {
-	if (spawn_pid == 0 || shm == nullptr) {
+	if (_spawn_pid == 0 || _shm == nullptr) {
 		return;
 	}
 }
 
-void DOOM::on_focus_entered() {
+void DOOM::_on_focus_entered() {
 	Input::get_singleton()->set_mouse_mode(Input::MouseMode::MOUSE_MODE_CAPTURED);
 }
 
@@ -225,61 +223,61 @@ void DOOM::set_import_assets(bool p_import_assets) {
 }
 
 bool DOOM::get_assets_ready() {
-	return assets_ready;
+	return _assets_ready;
 }
 
 void DOOM::set_assets_ready(bool p_ready) {
 }
 
 bool DOOM::get_enabled() {
-	return enabled;
+	return _enabled;
 }
 
 void DOOM::set_enabled(bool p_enabled) {
-	enabled = p_enabled;
+	_enabled = p_enabled;
 
-	update_doom();
+	_update_doom();
 }
 
 String DOOM::get_wad_path() {
-	return wad_path;
+	return _wad_path;
 }
 
 void DOOM::set_wad_path(String p_wad_path) {
-	wad_path = p_wad_path;
+	_wad_path = p_wad_path;
 }
 
 String DOOM::get_soundfont_path() {
-	return soundfont_path;
+	return _soundfont_path;
 }
 
 void DOOM::set_soundfont_path(String p_soundfont_path) {
-	soundfont_path = p_soundfont_path;
+	_soundfont_path = p_soundfont_path;
 	String global_path = ProjectSettings::get_singleton()->globalize_path(p_soundfont_path);
 	const char *global_path_char = global_path.utf8().get_data();
 
-	mutex->lock();
+	_mutex->lock();
 	if (fluid_is_soundfont(global_path_char)) {
-		synth_id = fluid_synth_sfload(synth, global_path_char, true);
-	} else if (synth_id != -1) {
-		fluid_synth_sfunload(synth, synth_id, true);
-		synth_id = -1;
+		_fluid_synth_id = fluid_synth_sfload(_fluid_synth, global_path_char, true);
+	} else if (_fluid_synth_id != -1) {
+		fluid_synth_sfunload(_fluid_synth, _fluid_synth_id, true);
+		_fluid_synth_id = -1;
 	}
-	mutex->unlock();
+	_mutex->unlock();
 }
 
 void DOOM::import_assets() {
-	if (wad_path.is_empty()) {
+	if (_wad_path.is_empty()) {
 		UtilityFunctions::printerr(vformat("[Godot DOOM node] Wad path must not be empty."));
 		return;
 	}
 
-	if (!FileAccess::file_exists(wad_path)) {
-		UtilityFunctions::printerr(vformat("[Godot DOOM node] Wad path (\"%s\") isn't a file.", wad_path));
+	if (!FileAccess::file_exists(_wad_path)) {
+		UtilityFunctions::printerr(vformat("[Godot DOOM node] Wad path (\"%s\") isn't a file.", _wad_path));
 		return;
 	}
 
-	if (!wad_thread.is_null() && wad_thread->is_started()) {
+	if (!_wad_thread.is_null() && _wad_thread->is_started()) {
 		UtilityFunctions::printerr(vformat("[Godot DOOM node] A process is already importing assets."));
 		return;
 	}
@@ -289,48 +287,45 @@ void DOOM::import_assets() {
 		user_dir->make_dir("godot-doom");
 	}
 
-	wad_thread.instantiate();
-	Callable wad_func = Callable(this, "wad_thread_func");
-	wad_thread->start(wad_func);
+	_wad_thread.instantiate();
+	Callable wad_func = Callable(this, "_wad_thread_func");
+	_wad_thread->start(wad_func);
 }
 
-void DOOM::update_doom() {
-	UtilityFunctions::print(vformat("update doom. enabled: %s, assets ready: %s", enabled, assets_ready));
-	if (enabled && assets_ready) {
-		init_doom();
+void DOOM::_update_doom() {
+	if (_enabled && _assets_ready) {
+		_init_doom();
 	} else {
-		enabled = false;
-		if (spawn_pid > 0) {
-			kill_doom();
+		_enabled = false;
+		if (_spawn_pid > 0) {
+			_kill_doom();
 		}
 	}
 }
 
-void DOOM::init_doom() {
-	UtilityFunctions::print("init_doom()");
-	exiting = false;
+void DOOM::_init_doom() {
+	_exiting = false;
 
-	init_shm();
+	_init_shm();
 
-	mutex_lock(shm);
-	shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
-	mutex_unlock(shm);
+	mutex_lock(_shm);
+	_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
+	mutex_unlock(_shm);
 
-	spawn_pid = launch_doom_executable();
+	_spawn_pid = _launch_doom_executable();
 
-	screen_buffer_array.resize(sizeof(screen_buffer));
+	_screen_buffer_array.resize(sizeof(_screen_buffer));
 
-	doom_thread.instantiate();
-	midi_thread.instantiate();
+	_doom_thread.instantiate();
+	_midi_thread.instantiate();
 
-	Callable doom_func = Callable(this, "doom_thread_func");
-	doom_thread->start(doom_func);
-	Callable midi_func = Callable(this, "midi_thread_func");
-	midi_thread->start(midi_func);
+	Callable doom_func = Callable(this, "_doom_thread_func");
+	_doom_thread->start(doom_func);
+	Callable midi_func = Callable(this, "_midi_thread_func");
+	_midi_thread->start(midi_func);
 }
 
-__pid_t DOOM::launch_doom_executable() {
-	UtilityFunctions::print("launch doom executable fn");
+__pid_t DOOM::_launch_doom_executable() {
 	String operating_system;
 	String name = OS::get_singleton()->get_name();
 
@@ -345,9 +340,9 @@ __pid_t DOOM::launch_doom_executable() {
 	UtilityFunctions::print(vformat("res://addons/godot-doom-node/%s/%s", operating_system, SPAWN_EXECUTABLE_NAME));
 
 	CharString path_cs = ProjectSettings::get_singleton()->globalize_path(vformat("res://addons/godot-doom-node/%s/%s", operating_system, SPAWN_EXECUTABLE_NAME)).utf8();
-	CharString id_cs = vformat("%s", shm_id).utf8();
-	CharString wad_cs = ProjectSettings::get_singleton()->globalize_path(wad_path).utf8();
-	CharString config_dir_cs = ProjectSettings::get_singleton()->globalize_path(vformat("user://godot-doom/%s-%s/", wad_path.get_file().get_basename(), wad_hash)).utf8();
+	CharString id_cs = vformat("%s", _shm_id).utf8();
+	CharString wad_cs = ProjectSettings::get_singleton()->globalize_path(_wad_path).utf8();
+	CharString config_dir_cs = ProjectSettings::get_singleton()->globalize_path(vformat("user://godot-doom/%s-%s/", _wad_path.get_file().get_basename(), _wad_hash)).utf8();
 
 	char *args[] = {
 		(char *)path_cs.get_data(),
@@ -371,16 +366,14 @@ __pid_t DOOM::launch_doom_executable() {
 		UtilityFunctions::print(vformat("what %s", args[0]));
 		exit(0);
 	}
-
-	UtilityFunctions::print(vformat("forked PID: %s", pid));
 	return pid;
 }
 
-void DOOM::midi_thread_func() {
+void DOOM::_midi_thread_func() {
 	while (true) {
-		mutex->lock();
-		Vector<MusicInstruction> instructions = music_instructions;
-		mutex->unlock();
+		_mutex->lock();
+		Vector<MusicInstruction> instructions = _music_instructions;
+		_mutex->unlock();
 
 		// Parse music instructions already, sooner the better
 		for (MusicInstruction instruction : instructions) {
@@ -394,14 +387,14 @@ void DOOM::midi_thread_func() {
 						sha1 += vformat("%c", instruction.lump_sha1_hex[i]);
 					}
 
-					Array keys = files.keys();
+					Array keys = _wad_files.keys();
 					for (int i = 0; i < keys.size(); i++) {
 						String key = keys[i];
 						if (!key.begins_with("D_")) {
 							continue;
 						}
 
-						Dictionary info = files[key];
+						Dictionary info = _wad_files[key];
 						if (sha1.to_lower() == String(info["sha1"]).to_lower()) {
 							midi_file = key;
 							break;
@@ -412,64 +405,74 @@ void DOOM::midi_thread_func() {
 						break;
 					}
 
-					if (midi_files.has(midi_file)) {
-						mutex->lock();
-						current_midi_file = midi_file;
-						mutex->unlock();
+					if (_stored_midi_files.has(midi_file)) {
+						if (_fluid_player == nullptr) {
+							_fluid_player = new_fluid_player(_fluid_synth);
+						} else if (midi_file != _current_midi_file) {
+							fluid_player_stop(_fluid_player);
+							fluid_player_join(_fluid_player);
+							delete_fluid_player(_fluid_player);
+							fluid_synth_system_reset(_fluid_synth);
+							_fluid_player = nullptr;
 
-						if (player == nullptr) {
-							player = new_fluid_player(synth);
+							OS::get_singleton()->delay_usec(100);
+
+							_fluid_player = new_fluid_player(_fluid_synth);
 						}
 
-						PackedByteArray stored_midi_file = midi_files[midi_file];
-						fluid_player_add_mem(player, stored_midi_file.ptrw(), stored_midi_file.size());
+						_mutex->lock();
+						_current_midi_file = midi_file;
+						_mutex->unlock();
+
+						PackedByteArray stored_midi_file = _stored_midi_files[midi_file];
+						fluid_player_add_mem(_fluid_player, stored_midi_file.ptrw(), stored_midi_file.size());
 					}
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG: {
 					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG");
-					mutex->lock();
-					current_midi_path = "";
-					mutex->unlock();
+					_mutex->lock();
+					_current_midi_path = "";
+					_mutex->unlock();
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
 					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_PLAY_SONG");
-					if (player == nullptr) {
-						player = new_fluid_player(synth);
-						PackedByteArray stored_midi_file = midi_files[current_midi_file];
-						fluid_player_add_mem(player, stored_midi_file.ptrw(), stored_midi_file.size());
+					if (_fluid_player == nullptr) {
+						_fluid_player = new_fluid_player(_fluid_synth);
+						PackedByteArray stored_midi_file = _stored_midi_files[_current_midi_file];
+						fluid_player_add_mem(_fluid_player, stored_midi_file.ptrw(), stored_midi_file.size());
 					}
 
-					current_midi_looping = instruction.looping;
+					_current_midi_looping = instruction.looping;
 
-					fluid_player_seek(player, 0);
-					fluid_player_set_loop(player, current_midi_looping ? -1 : 0);
-					fluid_player_play(player);
+					fluid_player_seek(_fluid_player, 0);
+					fluid_player_set_loop(_fluid_player, _current_midi_looping ? -1 : 0);
+					fluid_player_play(_fluid_player);
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
 					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_RESUME_SONG");
-					if (player == nullptr) {
-						player = new_fluid_player(synth);
-						PackedByteArray stored_midi_file = midi_files[current_midi_file];
-						fluid_player_add_mem(player, stored_midi_file.ptrw(), stored_midi_file.size());
+					if (_fluid_player == nullptr) {
+						_fluid_player = new_fluid_player(_fluid_synth);
+						PackedByteArray stored_midi_file = _stored_midi_files[_current_midi_file];
+						fluid_player_add_mem(_fluid_player, stored_midi_file.ptrw(), stored_midi_file.size());
 					}
 
-					fluid_player_seek(player, current_midi_tick);
-					fluid_player_set_loop(player, current_midi_looping ? -1 : 0);
-					fluid_player_play(player);
+					fluid_player_seek(_fluid_player, _current_midi_tick);
+					fluid_player_set_loop(_fluid_player, _current_midi_looping ? -1 : 0);
+					fluid_player_play(_fluid_player);
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC:
 				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
 					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_STOP_SONG");
-					if (player != nullptr) {
-						fluid_player_stop(player);
-						fluid_player_join(player);
-						delete_fluid_player(player);
-						fluid_synth_system_reset(synth);
-						player = nullptr;
+					if (_fluid_player != nullptr) {
+						fluid_player_stop(_fluid_player);
+						fluid_player_join(_fluid_player);
+						delete_fluid_player(_fluid_player);
+						fluid_synth_system_reset(_fluid_synth);
+						_fluid_player = nullptr;
 
 						OS::get_singleton()->delay_usec(100);
 					}
@@ -477,14 +480,14 @@ void DOOM::midi_thread_func() {
 
 				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
 					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_PAUSE_SONG");
-					if (player != nullptr) {
-						current_midi_tick = fluid_player_get_current_tick(player);
+					if (_fluid_player != nullptr) {
+						_current_midi_tick = fluid_player_get_current_tick(_fluid_player);
 
-						fluid_player_stop(player);
-						fluid_player_join(player);
-						delete_fluid_player(player);
-						fluid_synth_system_reset(synth);
-						player = nullptr;
+						fluid_player_stop(_fluid_player);
+						fluid_player_join(_fluid_player);
+						delete_fluid_player(_fluid_player);
+						fluid_synth_system_reset(_fluid_synth);
+						_fluid_player = nullptr;
 
 						OS::get_singleton()->delay_usec(100);
 					}
@@ -500,35 +503,35 @@ void DOOM::midi_thread_func() {
 				}
 			}
 		}
-		mutex->lock();
-		music_instructions.clear();
-		mutex->unlock();
+		_mutex->lock();
+		_music_instructions.clear();
+		_mutex->unlock();
 
-		mutex->lock();
-		if (exiting) {
-			mutex->unlock();
+		_mutex->lock();
+		if (_exiting) {
+			_mutex->unlock();
 			return;
 		}
-		mutex->unlock();
+		_mutex->unlock();
 
-		if (player == nullptr) {
+		if (_fluid_player == nullptr) {
 			continue;
 		}
 
-		switch (fluid_player_get_status(player)) {
+		switch (fluid_player_get_status(_fluid_player)) {
 			case FLUID_PLAYER_PLAYING: {
-				if (current_midi_playback == nullptr) {
+				if (_current_midi_playback == nullptr) {
 					continue;
 				}
 
 				uint64_t ticks = Time::get_singleton()->get_ticks_usec();
-				uint64_t diff = ticks - current_midi_last_tick;
-				current_midi_last_tick = ticks;
+				uint64_t diff = ticks - _current_midi_last_tick_usec;
+				_current_midi_last_tick_usec = ticks;
 
-				uint32_t len_asked = current_midi_stream->get_mix_rate() / 1000 * diff / 10;
+				uint32_t len_asked = _current_midi_stream->get_mix_rate() / 1000 * diff / 10;
 
-				if (current_midi_playback->get_frames_available() < len_asked) {
-					len_asked = current_midi_playback->get_frames_available();
+				if (_current_midi_playback->get_frames_available() < len_asked) {
+					len_asked = _current_midi_playback->get_frames_available();
 				}
 
 				if (len_asked <= 0) {
@@ -536,7 +539,7 @@ void DOOM::midi_thread_func() {
 				}
 
 				float bufl[len_asked], bufr[len_asked];
-				if (fluid_synth_write_float(synth, len_asked, bufl, 0, 1, bufr, 0, 1) == FLUID_FAILED) {
+				if (fluid_synth_write_float(_fluid_synth, len_asked, bufl, 0, 1, bufr, 0, 1) == FLUID_FAILED) {
 					break;
 				}
 
@@ -545,10 +548,8 @@ void DOOM::midi_thread_func() {
 					frames.append(Vector2(bufl[i], bufr[i]));
 				}
 
-				current_midi_playback->push_buffer(frames);
+				_current_midi_playback->push_buffer(frames);
 				frames.clear();
-
-				len_asked = 0;
 			} break;
 		}
 
@@ -556,12 +557,12 @@ void DOOM::midi_thread_func() {
 	}
 }
 
-void DOOM::wad_thread_func() {
-	files.clear();
+void DOOM::_wad_thread_func() {
+	_wad_files.clear();
 
-	mutex->lock();
-	String local_wad_path = wad_path;
-	mutex->unlock();
+	_mutex->lock();
+	String local_wad_path = _wad_path;
+	_mutex->unlock();
 
 	Ref<FileAccess> wad = FileAccess::open(local_wad_path, FileAccess::ModeFlags::READ);
 	if (wad.is_null()) {
@@ -570,13 +571,13 @@ void DOOM::wad_thread_func() {
 	}
 
 	PackedByteArray sig_array = wad->get_buffer(sizeof(WadOriginalSignature));
-	signature.signature = vformat("%c%c%c%c", sig_array[0], sig_array[1], sig_array[2], sig_array[3]);
-	signature.number_of_files = sig_array.decode_s32(sizeof(WadOriginalSignature::sig));
-	signature.fat_offset = sig_array.decode_s32(sizeof(WadOriginalSignature::sig) + sizeof(WadOriginalSignature::numFiles));
+	_wad_signature.signature = vformat("%c%c%c%c", sig_array[0], sig_array[1], sig_array[2], sig_array[3]);
+	_wad_signature.number_of_files = sig_array.decode_s32(sizeof(WadOriginalSignature::sig));
+	_wad_signature.fat_offset = sig_array.decode_s32(sizeof(WadOriginalSignature::sig) + sizeof(WadOriginalSignature::numFiles));
 
-	wad->seek(signature.fat_offset);
-	PackedByteArray wad_files = wad->get_buffer(sizeof(WadOriginalFileEntry) * signature.number_of_files);
-	for (int i = 0; i < signature.number_of_files; i++) {
+	wad->seek(_wad_signature.fat_offset);
+	PackedByteArray wad_files = wad->get_buffer(sizeof(WadOriginalFileEntry) * _wad_signature.number_of_files);
+	for (int i = 0; i < _wad_signature.number_of_files; i++) {
 		WadFileEntry file_entry;
 		file_entry.offset_data = wad_files.decode_s32(i * sizeof(WadOriginalFileEntry));
 		file_entry.length_data = wad_files.decode_s32(i * sizeof(WadOriginalFileEntry) + sizeof(WadOriginalFileEntry::offData));
@@ -608,7 +609,7 @@ void DOOM::wad_thread_func() {
 			info["sha1"] = Variant();
 		}
 
-		files[file_entry.name] = info;
+		_wad_files[file_entry.name] = info;
 	}
 
 	// Calculate hash
@@ -622,25 +623,25 @@ void DOOM::wad_thread_func() {
 	wad->close();
 	PackedByteArray hash = hashing_context->finish();
 
-	mutex->lock();
-	wad_hash = hash.hex_encode();
-	mutex->unlock();
+	_mutex->lock();
+	_wad_hash = hash.hex_encode();
+	_mutex->unlock();
 
-	call_deferred("wad_thread_end");
+	call_deferred("_wad_thread_end");
 }
 
-void DOOM::sound_fetching_thread_func() {
-	mutex->lock();
-	Array keys = files.keys();
-	mutex->unlock();
+void DOOM::_sound_fetching_thread_func() {
+	_mutex->lock();
+	Array keys = _wad_files.keys();
+	_mutex->unlock();
 	for (int i = 0; i < keys.size(); i++) {
 		String key = keys[i];
 		if (!key.begins_with("DS")) {
 			continue;
 		}
-		mutex->lock();
-		Dictionary info = files[key];
-		mutex->unlock();
+		_mutex->lock();
+		Dictionary info = _wad_files[key];
+		_mutex->unlock();
 		PackedByteArray file_array = info["data"];
 
 		AudioStreamPlayer *player = memnew(AudioStreamPlayer);
@@ -665,17 +666,17 @@ void DOOM::sound_fetching_thread_func() {
 		info["player"] = player;
 	}
 
-	call_deferred("sound_fetching_thread_end");
+	call_deferred("_sound_fetching_thread_end");
 }
 
-void DOOM::midi_fetching_thread_func() {
-	if (!FileAccess::file_exists(soundfont_path)) {
+void DOOM::_midi_fetching_thread_func() {
+	if (!FileAccess::file_exists(_soundfont_path)) {
 		return;
 	}
 
-	mutex->lock();
-	Array keys = files.keys();
-	mutex->unlock();
+	_mutex->lock();
+	Array keys = _wad_files.keys();
+	_mutex->unlock();
 
 	// Rendering loop
 	for (int i = 0; i < keys.size(); i++) {
@@ -684,16 +685,16 @@ void DOOM::midi_fetching_thread_func() {
 			continue;
 		}
 
-		mutex->lock();
-		Dictionary info = files[key];
-		mutex->unlock();
+		_mutex->lock();
+		Dictionary info = _wad_files[key];
+		_mutex->unlock();
 
 		PackedByteArray file_array = info["data"];
 		PackedByteArray midi_output;
 
-		mutex->lock();
-		String hash_dir = vformat("user://godot-doom/%s-%s", wad_path.get_file().get_basename(), wad_hash);
-		mutex->unlock();
+		_mutex->lock();
+		String hash_dir = vformat("user://godot-doom/%s-%s", _wad_path.get_file().get_basename(), _wad_hash);
+		_mutex->unlock();
 
 		String midi_file_name = vformat("%s.mid", key);
 		String midi_file_path = vformat("%s/%s", hash_dir, midi_file_name);
@@ -729,13 +730,13 @@ void DOOM::midi_fetching_thread_func() {
 			continue;
 		}
 
-		midi_files[key] = midi_output;
+		_stored_midi_files[key] = midi_output;
 	}
 
-	call_deferred("midi_fetching_thread_end");
+	call_deferred("_midi_fetching_thread_end");
 }
 
-void DOOM::append_sounds() {
+void DOOM::_append_sounds() {
 	SubViewportContainer *sound_subviewportcontainer = (SubViewportContainer *)get_node_or_null("SoundSubViewportContainer");
 	if (sound_subviewportcontainer != nullptr) {
 		sound_subviewportcontainer->set_name("tobedeleted");
@@ -783,9 +784,9 @@ void DOOM::append_sounds() {
 	sound_container->set_name("SoundContainer");
 	// sound_container->set_owner(get_tree()->get_edited_scene_root());
 
-	mutex->lock();
-	Array keys = files.keys();
-	mutex->unlock();
+	_mutex->lock();
+	Array keys = _wad_files.keys();
+	_mutex->unlock();
 
 	for (int i = 0; i < keys.size(); i++) {
 		String key = keys[i];
@@ -793,9 +794,9 @@ void DOOM::append_sounds() {
 			continue;
 		}
 
-		mutex->lock();
-		Dictionary info = files[key];
-		mutex->unlock();
+		_mutex->lock();
+		Dictionary info = _wad_files[key];
+		_mutex->unlock();
 
 		AudioStreamPlayer *player = reinterpret_cast<AudioStreamPlayer *>((Object *)info["player"]);
 		sound_container->add_child(player);
@@ -803,7 +804,7 @@ void DOOM::append_sounds() {
 	}
 }
 
-void DOOM::append_music() {
+void DOOM::_append_music() {
 	Node *music_container = get_node_or_null("MusicContainer");
 	if (music_container != nullptr) {
 		music_container->set_name("tobedeleted");
@@ -823,110 +824,110 @@ void DOOM::append_music() {
 	Ref<AudioStreamGenerator> stream;
 	stream.instantiate();
 	stream->set_buffer_length(0.05);
-	current_midi_stream = stream;
-	player->set_stream(current_midi_stream);
+	_current_midi_stream = stream;
+	player->set_stream(_current_midi_stream);
 	player->call_deferred("play");
 }
 
-void DOOM::wad_thread_end() {
-	if (wad_thread->is_alive()) {
-		wad_thread->wait_to_finish();
+void DOOM::_wad_thread_end() {
+	if (_wad_thread->is_alive()) {
+		_wad_thread->wait_to_finish();
 	}
 
-	start_sound_fetching();
-	start_midi_fetching();
+	_start_sound_fetching();
+	_start_midi_fetching();
 }
 
-void DOOM::sound_fetching_thread_end() {
+void DOOM::_sound_fetching_thread_end() {
 	if (sound_fetching_thread->is_alive()) {
 		sound_fetching_thread->wait_to_finish();
 	}
 
-	append_sounds();
+	_append_sounds();
 
-	sound_fetch_complete = true;
-	update_assets_status();
+	_sound_fetch_complete = true;
+	_update_assets_status();
 }
 
-void DOOM::midi_fetching_thread_end() {
+void DOOM::_midi_fetching_thread_end() {
 	if (sound_fetching_thread->is_alive()) {
 		sound_fetching_thread->wait_to_finish();
 	}
 
-	append_music();
+	_append_music();
 
-	midi_fetch_complete = true;
-	update_assets_status();
+	_midi_fetch_complete = true;
+	_update_assets_status();
 }
 
-void DOOM::start_sound_fetching() {
+void DOOM::_start_sound_fetching() {
 	sound_fetching_thread.instantiate();
-	Callable func = Callable(this, "sound_fetching_thread_func");
+	Callable func = Callable(this, "_sound_fetching_thread_func");
 	sound_fetching_thread->start(func);
 }
 
-void DOOM::start_midi_fetching() {
+void DOOM::_start_midi_fetching() {
 	midi_fetching_thread.instantiate();
-	Callable func = Callable(this, "midi_fetching_thread_func");
+	Callable func = Callable(this, "_midi_fetching_thread_func");
 	midi_fetching_thread->start(func);
 }
 
-void DOOM::update_assets_status() {
-	if (sound_fetch_complete && midi_fetch_complete) {
-		assets_ready = true;
+void DOOM::_update_assets_status() {
+	if (_sound_fetch_complete && _midi_fetch_complete) {
+		_assets_ready = true;
 		emit_signal("assets_imported");
 	}
 }
 
-void DOOM::kill_doom() {
-	exiting = true;
-	if (!doom_thread.is_null()) {
-		doom_thread->wait_to_finish();
+void DOOM::_kill_doom() {
+	_exiting = true;
+	if (!_doom_thread.is_null()) {
+		_doom_thread->wait_to_finish();
 	}
 
-	if (!wad_thread.is_null()) {
-		wad_thread->wait_to_finish();
+	if (!_wad_thread.is_null()) {
+		_wad_thread->wait_to_finish();
 	}
 
-	int result = shm_unlink(shm_id);
+	int result = shm_unlink(_shm_id);
 	if (result < 0) {
-		UtilityFunctions::printerr(vformat("ERROR unlinking shm %s: %s", shm_id, strerror(errno)));
+		UtilityFunctions::printerr(vformat("ERROR unlinking shm %s: %s", _shm_id, strerror(errno)));
 	}
 
-	if (spawn_pid > 0) {
-		kill(spawn_pid, SIGKILL);
+	if (_spawn_pid > 0) {
+		kill(_spawn_pid, SIGKILL);
 	}
-	spawn_pid = 0;
+	_spawn_pid = 0;
 }
 
 void DOOM::_process(double delta) {
-	if (spawn_pid == 0) {
+	if (_spawn_pid == 0) {
 		return;
 	}
 
-	update_screen_buffer();
-	update_sounds();
-	update_music();
+	_update_screen_buffer();
+	_update_sounds();
+	_update_music();
 }
 
-void DOOM::update_screen_buffer() {
-	memcpy(screen_buffer_array.ptrw(), screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA);
+void DOOM::_update_screen_buffer() {
+	memcpy(_screen_buffer_array.ptrw(), _screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA);
 
-	Ref<Image> image = Image::create_from_data(DOOMGENERIC_RESX, DOOMGENERIC_RESY, false, Image::Format::FORMAT_RGBA8, screen_buffer_array);
-	if (img_texture->get_image().is_null()) {
-		img_texture->set_image(image);
+	Ref<Image> image = Image::create_from_data(DOOMGENERIC_RESX, DOOMGENERIC_RESY, false, Image::Format::FORMAT_RGBA8, _screen_buffer_array);
+	if (_img_texture->get_image().is_null()) {
+		_img_texture->set_image(image);
 	} else {
-		img_texture->update(image);
+		_img_texture->update(image);
 	}
 }
 
-void DOOM::update_sounds() {
+void DOOM::_update_sounds() {
 	Node *sound_container = get_node<Node>("SoundContainer");
 	if (sound_container == nullptr) {
 		return;
 	}
 
-	for (SoundInstruction instruction : sound_instructions) {
+	for (SoundInstruction instruction : _sound_instructions) {
 		switch (instruction.type) {
 			case SOUND_INSTRUCTION_TYPE_START_SOUND: {
 				String name = vformat("DS%s", String(instruction.name).to_upper());
@@ -1004,10 +1005,10 @@ void DOOM::update_sounds() {
 			}
 		}
 	}
-	sound_instructions.clear();
+	_sound_instructions.clear();
 }
 
-void DOOM::update_music() {
+void DOOM::_update_music() {
 	AudioStreamPlayer *player = (AudioStreamPlayer *)get_node_or_null("MusicContainer/Player");
 	if (player == nullptr) {
 		return;
@@ -1020,120 +1021,120 @@ void DOOM::update_music() {
 	if (playback.is_null()) {
 		return;
 	}
-	current_midi_playback = playback;
+	_current_midi_playback = playback;
 }
 
-void DOOM::doom_thread_func() {
+void DOOM::_doom_thread_func() {
 	while (true) {
-		if (exiting) {
+		if (_exiting) {
 			return;
 		}
 
 		// Send the tick signal
-		while (!shm->init) {
-			if (exiting) {
+		while (!_shm->init) {
+			if (_exiting) {
 				return;
 			}
 			OS::get_singleton()->delay_msec(10);
 		}
-		kill(spawn_pid, SIGUSR1);
+		kill(_spawn_pid, SIGUSR1);
 
-		mutex_lock(shm);
-		shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
-		mutex_unlock(shm);
+		mutex_lock(_shm);
+		_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
+		mutex_unlock(_shm);
 
 		// // Let's wait for the shared memory to be ready
-		while (!shm->ready) {
-			if (exiting) {
+		while (!_shm->ready) {
+			if (_exiting) {
 				return;
 			}
 			OS::get_singleton()->delay_msec(10);
 		}
 
-		if (exiting) {
+		if (_exiting) {
 			return;
 		}
 		// The shared memory is ready
 		// Screenbuffer
-		mutex_lock(shm);
-		memcpy(screen_buffer, shm->screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
-		mutex_unlock(shm);
+		mutex_lock(_shm);
+		memcpy(_screen_buffer, _shm->screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
+		mutex_unlock(_shm);
 
 		// Sounds
-		for (int i = 0; i < shm->sound_instructions_length; i++) {
-			mutex_lock(shm);
-			SoundInstruction instruction = shm->sound_instructions[i];
-			mutex_unlock(shm);
-			sound_instructions.append(instruction);
+		for (int i = 0; i < _shm->sound_instructions_length; i++) {
+			mutex_lock(_shm);
+			SoundInstruction instruction = _shm->sound_instructions[i];
+			mutex_unlock(_shm);
+			_sound_instructions.append(instruction);
 		}
-		mutex_lock(shm);
-		shm->sound_instructions_length = 0;
-		mutex_unlock(shm);
+		mutex_lock(_shm);
+		_shm->sound_instructions_length = 0;
+		mutex_unlock(_shm);
 
 		// Music
-		for (int i = 0; i < shm->music_instructions_length; i++) {
-			mutex_lock(shm);
-			MusicInstruction instruction = shm->music_instructions[i];
-			mutex_unlock(shm);
-			music_instructions.append(instruction);
+		for (int i = 0; i < _shm->music_instructions_length; i++) {
+			mutex_lock(_shm);
+			MusicInstruction instruction = _shm->music_instructions[i];
+			mutex_unlock(_shm);
+			_music_instructions.append(instruction);
 		}
-		mutex_lock(shm);
-		shm->music_instructions_length = 0;
-		mutex_unlock(shm);
+		mutex_lock(_shm);
+		_shm->music_instructions_length = 0;
+		mutex_unlock(_shm);
 
 		// Let's sleep the time Doom asks
-		OS::get_singleton()->delay_usec(shm->sleep_ms * 1000);
+		OS::get_singleton()->delay_usec(_shm->sleep_ms * 1000);
 
 		// Reset the shared memory
-		mutex_lock(shm);
-		shm->ready = false;
-		mutex_unlock(shm);
+		mutex_lock(_shm);
+		_shm->ready = false;
+		mutex_unlock(_shm);
 
-		if (exiting) {
+		if (_exiting) {
 			return;
 		}
 	}
 }
 
-void DOOM::init_shm() {
-	id = last_id;
-	last_id += 1;
+void DOOM::_init_shm() {
+	_doom_instance_id = _last_doom_instance_id;
+	_last_doom_instance_id += 1;
 
-	const char *spawn_id = vformat("%s-%06d", GODOT_DOOM_SHM_NAME, id).utf8().get_data();
-	strcpy(shm_id, spawn_id);
+	const char *spawn_id = vformat("%s-%06d", GODOT_DOOM_SHM_NAME, _doom_instance_id).utf8().get_data();
+	strcpy(_shm_id, spawn_id);
 
-	shm_unlink(shm_id);
-	shm_fd = shm_open(shm_id, O_RDWR | O_CREAT | O_EXCL, 0666);
-	if (shm_fd < 0) {
+	shm_unlink(_shm_id);
+	_shm_fd = shm_open(_shm_id, O_RDWR | O_CREAT | O_EXCL, 0666);
+	if (_shm_fd < 0) {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));
 		return;
 	}
 
-	ftruncate(shm_fd, sizeof(SharedMemory));
-	shm = (SharedMemory *)mmap(0, sizeof(SharedMemory), PROT_WRITE, MAP_SHARED, shm_fd, 0);
-	if (shm == nullptr) {
+	ftruncate(_shm_fd, sizeof(SharedMemory));
+	_shm = (SharedMemory *)mmap(0, sizeof(SharedMemory), PROT_WRITE, MAP_SHARED, _shm_fd, 0);
+	if (_shm == nullptr) {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));
 		return;
 	}
 }
 
 DOOM::DOOM() {
-	spawn_pid = 0;
-	mutex.instantiate();
+	_spawn_pid = 0;
+	_mutex.instantiate();
 
-	settings = new_fluid_settings();
-	fluid_settings_setstr(settings, "player.timing-source", "system");
-	synth = new_fluid_synth(settings);
-	fluid_synth_set_gain(synth, 0.8f);
-	player = new_fluid_player(synth);
+	_fluid_settings = new_fluid_settings();
+	fluid_settings_setstr(_fluid_settings, "player.timing-source", "system");
+	_fluid_synth = new_fluid_synth(_fluid_settings);
+	fluid_synth_set_gain(_fluid_synth, 0.8f);
+	_fluid_player = new_fluid_player(_fluid_synth);
 
 	set_focus_mode(Control::FocusMode::FOCUS_ALL);
 }
 
 DOOM::~DOOM() {
-	delete_fluid_player(player);
-	delete_fluid_synth(synth);
-	delete_fluid_settings(settings);
+	delete_fluid_player(_fluid_player);
+	delete_fluid_synth(_fluid_synth);
+	delete_fluid_settings(_fluid_settings);
 }
 
-int DOOM::last_id = 0;
+int DOOM::_last_doom_instance_id = 0;
