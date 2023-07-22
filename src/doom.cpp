@@ -1001,10 +1001,6 @@ void DOOM::_process(double delta) {
 	_update_screen_buffer();
 	_update_sounds();
 	_update_music();
-
-	if (Rect2(Vector2(), get_size()).has_point(get_local_mouse_position())) {
-		grab_focus();
-	}
 }
 
 void DOOM::_update_screen_buffer() {
