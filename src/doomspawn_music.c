@@ -10,7 +10,7 @@
 #include "doomspawn.h"
 
 #define SHA1_LEN 20
-#define SHA1_HEX_LEN 40
+#define SHA1_HEX_LEN 41
 
 typedef struct LumpSha1 {
 	unsigned char sha1_hex[SHA1_HEX_LEN];
