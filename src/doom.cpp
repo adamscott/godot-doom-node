@@ -271,7 +271,15 @@ String DOOM::get_wad_path() {
 }
 
 void DOOM::set_wad_path(String p_wad_path) {
+	if (_wad_path == p_wad_path) {
+		return;
+	}
+	UtilityFunctions::print(vformat("set_wad_path: %s", p_wad_path));
+
 	_wad_path = p_wad_path;
+
+	set_enabled(false);
+	_assets_ready = false;
 }
 
 String DOOM::get_soundfont_path() {
