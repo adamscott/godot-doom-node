@@ -5,11 +5,13 @@
 extern "C" {
 #endif
 
+#include <assert.h>
 #include <unistd.h>
 
 #include "doomcommon.h"
 
 static inline void mutex_lock(SharedMemory *shm) {
+	assert(shm != NULL);
 	while (shm->lock) {
 		usleep(1);
 	}
