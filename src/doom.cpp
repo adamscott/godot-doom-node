@@ -467,8 +467,10 @@ void DOOM::_midi_thread_func() {
 		}
 		_mutex->unlock();
 
+		Vector<MusicInstruction> instructions = _music_instructions.duplicate();
+
 		// Parse music instructions already, sooner the better
-		for (MusicInstruction instruction : _music_instructions) {
+		for (MusicInstruction instruction : instructions) {
 			switch (instruction.type) {
 				case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
 					String sha1;
