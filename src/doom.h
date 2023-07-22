@@ -178,7 +178,6 @@ public:
 	virtual void _ready() override;
 	virtual void _process(double p_delta) override;
 	virtual void _input(const Ref<InputEvent> &event) override;
-	virtual void _gui_input(const Ref<InputEvent> &event) override;
 };
 
 } // namespace godot

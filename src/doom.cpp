@@ -211,6 +211,7 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 
 		if (key_pressed != KEY_ESCAPE) {
 			get_viewport()->set_input_as_handled();
+			Input::get_singleton()->set_mouse_mode(Input::MouseMode::MOUSE_MODE_CAPTURED);
 		}
 		return;
 	}
@@ -231,14 +232,7 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 	if (mouse_motion.is_valid()) {
 		mutex_lock(_shm);
 		_shm->mouse_x += mouse_motion->get_relative().x * _mouse_acceleration;
-		// _shm->mouse_y += mouse_motion->get_relative().y * _mouse_acceleration;
 		mutex_unlock(_shm);
-		return;
-	}
-}
-
-void DOOM::_gui_input(const Ref<InputEvent> &event) {
-	if (_spawn_pid == 0 || _shm == nullptr) {
 		return;
 	}
 }
