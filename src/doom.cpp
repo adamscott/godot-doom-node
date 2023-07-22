@@ -101,7 +101,6 @@ void DOOM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_wad_thread_end"), &DOOM::_wad_thread_end);
 	ClassDB::bind_method(D_METHOD("_sound_fetching_thread_end"), &DOOM::_sound_fetching_thread_end);
 	ClassDB::bind_method(D_METHOD("_midi_fetching_thread_end"), &DOOM::_midi_fetching_thread_end);
-	ClassDB::bind_method(D_METHOD("_on_focus_entered"), &DOOM::_on_focus_entered);
 
 	ClassDB::bind_method(D_METHOD("import_assets"), &DOOM::import_assets);
 
@@ -127,13 +126,19 @@ void DOOM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_soundfont_path"), &DOOM::get_soundfont_path);
 	ClassDB::bind_method(D_METHOD("set_soundfont_path", "soundfont_path"), &DOOM::set_soundfont_path);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "assets_soundfont_path", PROPERTY_HINT_FILE, "*.sf2,*.sf3"), "set_soundfont_path", "get_soundfont_path");
+
+	ClassDB::bind_method(D_METHOD("get_wasd_mode"), &DOOM::get_wasd_mode);
+	ClassDB::bind_method(D_METHOD("set_wasd_mode", "wasd_mode_enabled"), &DOOM::set_wasd_mode);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "wasd_mode"), "set_wasd_mode", "get_wasd_mode");
+
+	ClassDB::bind_method(D_METHOD("get_mouse_acceleration"), &DOOM::get_mouse_acceleration);
+	ClassDB::bind_method(D_METHOD("set_mouse_acceleration", "mouse_acceleration"), &DOOM::set_mouse_acceleration);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "mouse_acceleration"), "set_mouse_acceleration", "get_mouse_acceleration");
 }
 
 void DOOM::_ready() {
 	_img_texture.instantiate();
 	set_texture(_img_texture);
-
-	connect("focus_entered", Callable(this, "_on_focus_entered"));
 }
 
 void DOOM::_enter_tree() {}
@@ -149,6 +154,10 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 		return;
 	}
 
+	if (!has_focus()) {
+		return;
+	}
+
 	Ref<InputEventKey> key = event;
 	if (key.is_valid()) {
 		if (key->is_echo()) {
@@ -158,6 +167,30 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 
 		Key key_pressed = key->get_physical_keycode();
 		uint32_t pressed_flag = key->is_pressed() << 31;
+
+		if (_wasd_mode) {
+			switch (key_pressed) {
+				case KEY_W: {
+					key_pressed = KEY_UP;
+				} break;
+
+				case KEY_A: {
+					key_pressed = KEY_COMMA;
+				} break;
+
+				case KEY_S: {
+					key_pressed = KEY_DOWN;
+				} break;
+
+				case KEY_D: {
+					key_pressed = KEY_PERIOD;
+				} break;
+
+				default: {
+					// do nothing
+				}
+			}
+		}
 
 		for (int i = 0; i < _shm->keys_pressed_length; i++) {
 			if (_shm->keys_pressed[i] == (pressed_flag | key_pressed)) {
@@ -170,20 +203,14 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 		_shm->keys_pressed_length += 1;
 		mutex_unlock(_shm);
 
-		if (key->is_pressed() && !key->is_echo() && key->get_physical_keycode() == Key::KEY_ESCAPE) {
-			Input::get_singleton()->set_mouse_mode(Input::MouseMode::MOUSE_MODE_VISIBLE);
+		if (key_pressed != KEY_ESCAPE) {
+			get_viewport()->set_input_as_handled();
 		}
-
-		get_viewport()->set_input_as_handled();
 		return;
 	}
 
 	Ref<InputEventMouseButton> mouse_button = event;
 	if (mouse_button.is_valid()) {
-		if (mouse_button->is_pressed()) {
-			grab_focus();
-		}
-
 		MouseButton mouse_button_index = mouse_button->get_button_index();
 		uint32_t pressed_flag = mouse_button->is_pressed() << 31;
 
@@ -197,8 +224,8 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 	Ref<InputEventMouseMotion> mouse_motion = event;
 	if (mouse_motion.is_valid()) {
 		mutex_lock(_shm);
-		_shm->mouse_x += mouse_motion->get_relative().x;
-		_shm->mouse_y += mouse_motion->get_relative().y;
+		_shm->mouse_x += mouse_motion->get_relative().x * _mouse_acceleration;
+		// _shm->mouse_y += mouse_motion->get_relative().y * _mouse_acceleration;
 		mutex_unlock(_shm);
 		return;
 	}
@@ -208,10 +235,6 @@ void DOOM::_gui_input(const Ref<InputEvent> &event) {
 	if (_spawn_pid == 0 || _shm == nullptr) {
 		return;
 	}
-}
-
-void DOOM::_on_focus_entered() {
-	Input::get_singleton()->set_mouse_mode(Input::MouseMode::MOUSE_MODE_CAPTURED);
 }
 
 bool DOOM::get_import_assets() {
@@ -264,6 +287,22 @@ void DOOM::set_soundfont_path(String p_soundfont_path) {
 		_fluid_synth_id = -1;
 	}
 	_mutex->unlock();
+}
+
+bool DOOM::get_wasd_mode() {
+	return _wasd_mode;
+}
+
+void DOOM::set_wasd_mode(bool p_wasd_mode) {
+	_wasd_mode = p_wasd_mode;
+}
+
+float DOOM::get_mouse_acceleration() {
+	return _mouse_acceleration;
+}
+
+void DOOM::set_mouse_acceleration(float p_mouse_acceleration) {
+	_mouse_acceleration = p_mouse_acceleration;
 }
 
 void DOOM::import_assets() {
@@ -1093,8 +1132,6 @@ DOOM::DOOM() {
 	_fluid_synth = new_fluid_synth(_fluid_settings);
 	fluid_synth_set_gain(_fluid_synth, 0.8f);
 	_fluid_player = new_fluid_player(_fluid_synth);
-
-	set_focus_mode(Control::FocusMode::FOCUS_ALL);
 }
 
 DOOM::~DOOM() {

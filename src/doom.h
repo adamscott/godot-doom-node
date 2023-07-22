@@ -83,6 +83,9 @@ private:
 	Vector<MusicInstruction> _music_instructions;
 
 	bool _enabled = false;
+	bool _wasd_mode = false;
+	float _mouse_acceleration = 1.0f;
+	bool _mouse_captured = false;
 
 	String _wad_path;
 	String _soundfont_path;
@@ -141,8 +144,6 @@ private:
 	void _update_music();
 	void _update_doom();
 
-	void _on_focus_entered();
-
 protected:
 	static void _bind_methods();
 
@@ -150,6 +151,10 @@ public:
 	DOOM();
 	~DOOM();
 
+	bool get_wasd_mode();
+	void set_wasd_mode(bool p_wasd_mode);
+	float get_mouse_acceleration();
+	void set_mouse_acceleration(float p_mouse_acceleration);
 	bool get_import_assets();
 	void set_import_assets(bool p_import_assets);
 	bool get_assets_ready();
