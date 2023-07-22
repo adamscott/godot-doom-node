@@ -461,10 +461,6 @@ __pid_t DOOM::_launch_doom_executable() {
 void DOOM::_midi_thread_func() {
 	while (true) {
 		_mutex->lock();
-		Vector<MusicInstruction> instructions = _music_instructions;
-		_mutex->unlock();
-
-		_mutex->lock();
 		if (_exiting || !_enabled) {
 			_mutex->unlock();
 			return;
@@ -472,7 +468,7 @@ void DOOM::_midi_thread_func() {
 		_mutex->unlock();
 
 		// Parse music instructions already, sooner the better
-		for (MusicInstruction instruction : instructions) {
+		for (MusicInstruction instruction : _music_instructions) {
 			switch (instruction.type) {
 				case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
 					String sha1;
@@ -496,7 +492,7 @@ void DOOM::_midi_thread_func() {
 						}
 					}
 
-					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: %s", midi_file));
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: %s (%s)", midi_file, sha1));
 
 					if (midi_file.is_empty()) {
 						break;
@@ -982,6 +978,8 @@ void DOOM::_kill_doom() {
 void DOOM::_stop_doom() {
 	UtilityFunctions::print("Stop doom");
 
+	_stop_music();
+
 	if (_exiting) {
 		return;
 	}
@@ -1168,7 +1166,7 @@ void DOOM::_doom_thread_func() {
 		for (int i = 0; i < _shm->sound_instructions_length; i++) {
 			mutex_lock(_shm);
 			SoundInstruction instruction;
-			memcpy(&instruction, &_shm->sound_instructions[i], sizeof(SoundInstruction));
+			SoundInstruction_duplicate(&_shm->sound_instructions[i], &instruction);
 			mutex_unlock(_shm);
 			_sound_instructions.append(instruction);
 		}
@@ -1180,7 +1178,7 @@ void DOOM::_doom_thread_func() {
 		for (int i = 0; i < _shm->music_instructions_length; i++) {
 			mutex_lock(_shm);
 			MusicInstruction instruction;
-			memcpy(&instruction, &_shm->music_instructions[i], sizeof(MusicInstruction));
+			MusicInstruction_duplicate(&_shm->music_instructions[i], &instruction);
 			mutex_unlock(_shm);
 			_music_instructions.append(instruction);
 		}

@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <string.h>
 
 #include "doomgeneric/doomgeneric.h"
 #include "doomgeneric/doomtype.h"
@@ -36,6 +37,11 @@ typedef struct SoundInstruction {
 	int32_t usefulness;
 } SoundInstruction;
 
+void static inline SoundInstruction_duplicate(SoundInstruction *p_from, SoundInstruction *r_to) {
+	*r_to = *p_from;
+	strcpy(r_to->name, p_from->name);
+}
+
 typedef enum MusicInstructionType {
 	MUSIC_INSTRUCTION_TYPE_EMPTY,
 	MUSIC_INSTRUCTION_TYPE_INIT,
@@ -51,10 +57,15 @@ typedef enum MusicInstructionType {
 
 typedef struct MusicInstruction {
 	MusicInstructionType type;
-	char lump_sha1_hex[40];
+	char lump_sha1_hex[41];
 	int32_t volume;
 	uint8_t looping : 1;
 } MusicInstruction;
+
+void static inline MusicInstruction_duplicate(MusicInstruction *p_from, MusicInstruction *r_to) {
+	*r_to = *p_from;
+	strcpy(r_to->lump_sha1_hex, p_from->lump_sha1_hex);
+}
 
 typedef struct SharedMemory {
 	uint64_t ticks_msec;

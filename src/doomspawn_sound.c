@@ -30,7 +30,7 @@ static snddevice_t sound_godot_devices[] = {
 };
 
 static void add_instruction(SoundInstruction inst) {
-	memcpy(&shm->sound_instructions[shm->sound_instructions_length], &inst, sizeof(inst));
+	SoundInstruction_duplicate(&inst, &shm->sound_instructions[shm->sound_instructions_length]);
 	shm->sound_instructions_length++;
 }
 
@@ -98,8 +98,7 @@ static int Godot_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep) {
 	inst.sep = sep;
 	inst.pitch = sfxinfo->pitch;
 
-	memcpy(&shm->sound_instructions[shm->sound_instructions_length], &inst, sizeof(inst));
-	shm->sound_instructions_length++;
+	add_instruction(inst);
 
 	channels_playing[channel] = sfxinfo;
 
