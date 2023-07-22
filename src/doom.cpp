@@ -156,7 +156,7 @@ void DOOM::_exit_tree() {
 }
 
 void DOOM::_input(const Ref<InputEvent> &event) {
-	if (_spawn_pid == 0 || _shm == nullptr) {
+	if (_spawn_pid == 0 || _shm == nullptr || !_enabled) {
 		return;
 	}
 
