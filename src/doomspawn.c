@@ -88,14 +88,7 @@ void tick() {
 
 	doomgeneric_Tick();
 
-	if (shm->terminate && shm->autosave) {
-		printf("terminate/quicksave\n");
-		G_SaveGame(5, strdup("GODOT DOOM QUICKSAVE"));
-		// needs a tick to save
-		doomgeneric_Tick();
-		doomgeneric_Tick();
-		doomgeneric_Tick();
-
+	if (shm->terminate) {
 		while (true) {
 			usleep(10);
 		}

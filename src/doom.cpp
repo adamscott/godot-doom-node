@@ -305,12 +305,6 @@ bool DOOM::get_autosave() {
 
 void DOOM::set_autosave(bool p_autosave) {
 	_autosave = p_autosave;
-
-	if (_shm != nullptr) {
-		mutex_lock(_shm);
-		_shm->autosave = true;
-		mutex_unlock(_shm);
-	}
 }
 
 bool DOOM::get_wasd_mode() {
@@ -1185,10 +1179,6 @@ void DOOM::_init_shm() {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));
 		return;
 	}
-
-	mutex_lock(_shm);
-	_shm->autosave = _autosave;
-	mutex_unlock(_shm);
 }
 
 DOOM::DOOM() {
