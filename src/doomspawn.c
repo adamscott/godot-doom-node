@@ -148,10 +148,10 @@ int DG_GetKey(int *pressed, unsigned char *key) {
 		mutex_unlock(shm);
 		return true;
 	}
+
 	mutex_lock(shm);
 	shm->keys_pressed_length = 0;
 	mutex_unlock(shm);
-
 	return false;
 }
 
