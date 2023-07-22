@@ -28,6 +28,11 @@ boolean left_mouse_button_pressed = false;
 boolean middle_mouse_button_pressed = false;
 boolean right_mouse_button_pressed = false;
 
+uint32_t local_keys_pressed[UINT8_MAX];
+uint8_t local_keys_pressed_length;
+uint32_t local_mouse_buttons_pressed[UINT8_MAX];
+uint8_t local_mouse_buttons_pressed_length;
+
 int main(int argc, char **argv) {
 	if (argc < 3) {
 		printf("Error, missing arguments.\n");
@@ -136,22 +141,27 @@ uint32_t DG_GetTicksMs() {
 }
 
 int DG_GetKey(int *pressed, unsigned char *key) {
-	if (shm->keys_pressed_length > 0) {
-		uint32_t key_pressed = shm->keys_pressed[shm->keys_pressed_length - 1];
+	// If the local buffer is empty, fill it
+	if (shm->keys_pressed_length > 0 && local_keys_pressed_length == 0) {
+		mutex_lock(shm);
+		memcpy(local_keys_pressed, shm->keys_pressed, sizeof(local_keys_pressed));
+		local_keys_pressed_length = shm->keys_pressed_length;
+		shm->keys_pressed_length = 0;
+		mutex_unlock(shm);
+	}
+
+	if (local_keys_pressed_length > 0) {
+		uint32_t key_pressed = local_keys_pressed[local_keys_pressed_length - 1];
 		*pressed = key_pressed >> 31;
 		*key = convert_to_doom_key(key_pressed & ~(1 << 31));
 
 		printf("key %d, pressed: %d\n", *(uint8_t *)key, *pressed);
 
-		mutex_lock(shm);
-		shm->keys_pressed_length -= 1;
-		mutex_unlock(shm);
+		local_keys_pressed_length -= 1;
 		return true;
 	}
 
-	mutex_lock(shm);
-	shm->keys_pressed_length = 0;
-	mutex_unlock(shm);
+	local_keys_pressed_length = 0;
 	return false;
 }
 
