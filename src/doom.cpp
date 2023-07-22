@@ -885,7 +885,26 @@ void DOOM::_update_assets_status() {
 }
 
 void DOOM::_kill_doom() {
+	UtilityFunctions::print("Kill doom");
+
+	if (_shm != nullptr) {
+		mutex_lock(_shm);
+		_shm->terminate = true;
+		mutex_unlock(_shm);
+	}
+
+	OS::get_singleton()->delay_msec(250);
+
+	fluid_player_stop(_fluid_player);
+	fluid_player_join(_fluid_player);
+	delete_fluid_player(_fluid_player);
+	fluid_synth_system_reset(_fluid_synth);
+	_fluid_player = nullptr;
+
+	_mutex->lock();
 	_exiting = true;
+	_mutex->unlock();
+
 	if (!_doom_thread.is_null()) {
 		_doom_thread->wait_to_finish();
 	}
