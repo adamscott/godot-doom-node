@@ -56,7 +56,7 @@ static boolean Godot_InitMusic(void) {
 static void Godot_ShutdownMusic(void) {
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC;
-	shm->music_instructions[shm->music_instructions_length] = inst;
+	memcpy(&shm->music_instructions[shm->music_instructions_length], &inst, sizeof(inst));
 	shm->music_instructions_length++;
 }
 
@@ -64,21 +64,21 @@ static void Godot_SetMusicVolume(int volume) {
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME;
 	inst.volume = volume;
-	shm->music_instructions[shm->music_instructions_length] = inst;
+	memcpy(&shm->music_instructions[shm->music_instructions_length], &inst, sizeof(inst));
 	shm->music_instructions_length++;
 }
 
 static void Godot_PauseSong(void) {
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_PAUSE_SONG;
-	shm->music_instructions[shm->music_instructions_length] = inst;
+	memcpy(&shm->music_instructions[shm->music_instructions_length], &inst, sizeof(inst));
 	shm->music_instructions_length++;
 }
 
 static void Godot_ResumeSong(void) {
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_RESUME_SONG;
-	shm->music_instructions[shm->music_instructions_length] = inst;
+	memcpy(&shm->music_instructions[shm->music_instructions_length], &inst, sizeof(inst));
 	shm->music_instructions_length++;
 }
 
@@ -99,7 +99,7 @@ static void *Godot_RegisterSong(void *data, int len) {
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_REGISTER_SONG;
 	memcpy(inst.lump_sha1_hex, sha.sha1_hex, SHA1_HEX_LEN);
-	shm->music_instructions[shm->music_instructions_length] = inst;
+	memcpy(&shm->music_instructions[shm->music_instructions_length], &inst, sizeof(inst));
 	shm->music_instructions_length++;
 
 	return handle;
@@ -115,7 +115,7 @@ static void Godot_UnRegisterSong(void *handle) {
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG;
 	memcpy(inst.lump_sha1_hex, sha1, SHA1_HEX_LEN);
-	shm->music_instructions[shm->music_instructions_length] = inst;
+	memcpy(&shm->music_instructions[shm->music_instructions_length], &inst, sizeof(inst));
 	shm->music_instructions_length++;
 }
 
@@ -130,14 +130,14 @@ static void Godot_PlaySong(void *handle, boolean looping) {
 	inst.type = MUSIC_INSTRUCTION_TYPE_PLAY_SONG;
 	memcpy(inst.lump_sha1_hex, sha1, SHA1_HEX_LEN);
 	inst.looping = true;
-	shm->music_instructions[shm->music_instructions_length] = inst;
+	memcpy(&shm->music_instructions[shm->music_instructions_length], &inst, sizeof(inst));
 	shm->music_instructions_length++;
 }
 
 static void Godot_StopSong(void) {
 	MusicInstruction inst;
 	inst.type = MUSIC_INSTRUCTION_TYPE_STOP_SONG;
-	shm->music_instructions[shm->music_instructions_length] = inst;
+	memcpy(&shm->music_instructions[shm->music_instructions_length], &inst, sizeof(inst));
 	shm->music_instructions_length++;
 }
 

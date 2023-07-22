@@ -467,7 +467,6 @@ void DOOM::_midi_thread_func() {
 		for (MusicInstruction instruction : instructions) {
 			switch (instruction.type) {
 				case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
-					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_REGISTER_SONG");
 					String sha1;
 					String midi_file;
 
@@ -488,6 +487,8 @@ void DOOM::_midi_thread_func() {
 							break;
 						}
 					}
+
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: %s", midi_file));
 
 					if (midi_file.is_empty()) {
 						break;
@@ -520,7 +521,7 @@ void DOOM::_midi_thread_func() {
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
-					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_PLAY_SONG");
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PLAY_SONG: %s", _current_midi_file));
 					if (_fluid_player == nullptr) {
 						_fluid_player = new_fluid_player(_fluid_synth);
 						PackedByteArray stored_midi_file = _stored_midi_files[_current_midi_file];
@@ -535,7 +536,7 @@ void DOOM::_midi_thread_func() {
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
-					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_RESUME_SONG");
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_RESUME_SONG: %s", _current_midi_file));
 					if (_fluid_player == nullptr) {
 						_fluid_player = new_fluid_player(_fluid_synth);
 						PackedByteArray stored_midi_file = _stored_midi_files[_current_midi_file];
@@ -549,13 +550,13 @@ void DOOM::_midi_thread_func() {
 
 				case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC:
 				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
-					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_STOP_SONG");
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_STOP_SONG: %s", _current_midi_file));
 					_stop_music();
 					OS::get_singleton()->delay_usec(100);
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
-					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_PAUSE_SONG");
+					UtilityFunctions::print(vformat("MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: %s", _current_midi_file));
 					if (_fluid_player != nullptr) {
 						_current_midi_tick = fluid_player_get_current_tick(_fluid_player);
 					}
@@ -1000,6 +1001,10 @@ void DOOM::_process(double delta) {
 	_update_screen_buffer();
 	_update_sounds();
 	_update_music();
+
+	if (Rect2(Vector2(), get_size()).has_point(get_local_mouse_position())) {
+		grab_focus();
+	}
 }
 
 void DOOM::_update_screen_buffer() {
