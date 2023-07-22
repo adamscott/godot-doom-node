@@ -7,6 +7,7 @@
 #include "godot_cpp/classes/audio_stream_generator.hpp"
 #include "godot_cpp/classes/audio_stream_generator_playback.hpp"
 #include "godot_cpp/classes/control.hpp"
+#include "godot_cpp/classes/global_constants.hpp"
 #include "godot_cpp/classes/image_texture.hpp"
 #include "godot_cpp/classes/input_event.hpp"
 #include "godot_cpp/classes/mutex.hpp"
@@ -81,6 +82,12 @@ private:
 	Vector<String> _uuids;
 	Vector<SoundInstruction> _sound_instructions;
 	Vector<MusicInstruction> _music_instructions;
+	Vector<Key> _keys_pressed;
+	Vector<Key> _keys_pressed_queue;
+	Vector<Key> _keys_released_queue;
+	Vector<MouseButton> _mouse_buttons_pressed;
+	Vector<MouseButton> _mouse_buttons_pressed_queue;
+	Vector<MouseButton> _mouse_buttons_released_queue;
 
 	bool _enabled = false;
 	bool _wasd_mode = false;
@@ -145,6 +152,7 @@ private:
 	void _update_screen_buffer();
 	void _update_sounds();
 	void _update_music();
+	void _update_input();
 	void _update_doom();
 
 protected:

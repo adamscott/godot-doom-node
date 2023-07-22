@@ -25,6 +25,8 @@ void uninitialize_godot_doom_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
+
+	printf("uninitialize_godot_doom_module\n");
 }
 
 extern "C" {

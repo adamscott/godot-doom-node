@@ -167,7 +167,7 @@ void DG_GetMouseState(int *mouse_x, int *mouse_y, int *mouse_button_bitfield) {
 	boolean pressed = false;
 	int8_t index = 0;
 
-	if (shm->mouse_buttons_pressed_length > 0) {
+	while (shm->mouse_buttons_pressed_length > 0) {
 		uint32_t mouse_button_pressed = shm->mouse_buttons_pressed[shm->mouse_buttons_pressed_length - 1];
 		pressed = mouse_button_pressed >> 31;
 		index = ~(1 << 31) & mouse_button_pressed;

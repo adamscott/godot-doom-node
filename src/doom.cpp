@@ -148,8 +148,6 @@ void DOOM::_ready() {
 void DOOM::_enter_tree() {}
 
 void DOOM::_exit_tree() {
-	UtilityFunctions::print("_exit_tree()");
-
 	if (_enabled) {
 		_kill_doom();
 	}
@@ -171,25 +169,23 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 			return;
 		}
 
-		Key key_pressed = key->get_physical_keycode();
-		uint32_t pressed_flag = key->is_pressed() << 31;
-
+		Key active_key = key->get_physical_keycode();
 		if (_wasd_mode) {
-			switch (key_pressed) {
+			switch (active_key) {
 				case KEY_W: {
-					key_pressed = KEY_UP;
+					active_key = KEY_UP;
 				} break;
 
 				case KEY_A: {
-					key_pressed = KEY_COMMA;
+					active_key = KEY_COMMA;
 				} break;
 
 				case KEY_S: {
-					key_pressed = KEY_DOWN;
+					active_key = KEY_DOWN;
 				} break;
 
 				case KEY_D: {
-					key_pressed = KEY_PERIOD;
+					active_key = KEY_PERIOD;
 				} break;
 
 				default: {
@@ -198,18 +194,13 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 			}
 		}
 
-		for (int i = 0; i < _shm->keys_pressed_length; i++) {
-			if (_shm->keys_pressed[i] == (pressed_flag | key_pressed)) {
-				return;
-			}
+		if (key->is_pressed() && !_keys_pressed_queue.has(active_key)) {
+			_keys_pressed_queue.append(active_key);
+		} else if (key->is_released() && !_keys_released_queue.has(active_key)) {
+			_keys_released_queue.append(active_key);
 		}
 
-		mutex_lock(_shm);
-		_shm->keys_pressed[_shm->keys_pressed_length] = pressed_flag | key_pressed;
-		_shm->keys_pressed_length += 1;
-		mutex_unlock(_shm);
-
-		if (key_pressed != KEY_ESCAPE) {
+		if (active_key != KEY_ESCAPE) {
 			get_viewport()->set_input_as_handled();
 			Input::get_singleton()->set_mouse_mode(Input::MouseMode::MOUSE_MODE_CAPTURED);
 		}
@@ -219,12 +210,12 @@ void DOOM::_input(const Ref<InputEvent> &event) {
 	Ref<InputEventMouseButton> mouse_button = event;
 	if (mouse_button.is_valid()) {
 		MouseButton mouse_button_index = mouse_button->get_button_index();
-		uint32_t pressed_flag = mouse_button->is_pressed() << 31;
 
-		mutex_lock(_shm);
-		_shm->mouse_buttons_pressed[_shm->mouse_buttons_pressed_length] = pressed_flag | mouse_button_index;
-		_shm->mouse_buttons_pressed_length += 1;
-		mutex_unlock(_shm);
+		if (mouse_button->is_pressed() && !_mouse_buttons_pressed_queue.has(mouse_button_index)) {
+			_mouse_buttons_pressed_queue.append(mouse_button_index);
+		} else if (mouse_button->is_released() && !_mouse_buttons_released_queue.has(mouse_button_index)) {
+			_mouse_buttons_released_queue.append(mouse_button_index);
+		}
 		return;
 	}
 
@@ -467,10 +458,9 @@ void DOOM::_midi_thread_func() {
 		}
 		_mutex->unlock();
 
-		Vector<MusicInstruction> instructions = _music_instructions.duplicate();
-
 		// Parse music instructions already, sooner the better
-		for (MusicInstruction instruction : instructions) {
+		_mutex->lock();
+		for (MusicInstruction instruction : _music_instructions) {
 			switch (instruction.type) {
 				case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
 					String sha1;
@@ -581,7 +571,6 @@ void DOOM::_midi_thread_func() {
 				}
 			}
 		}
-		_mutex->lock();
 		_music_instructions.clear();
 		_mutex->unlock();
 
@@ -926,8 +915,6 @@ void DOOM::_update_assets_status() {
 }
 
 void DOOM::_kill_doom() {
-	UtilityFunctions::print("Kill doom");
-
 	if (_shm != nullptr) {
 		mutex_lock(_shm);
 		_shm->terminate = true;
@@ -936,39 +923,23 @@ void DOOM::_kill_doom() {
 
 	OS::get_singleton()->delay_msec(250);
 
-	fluid_player_stop(_fluid_player);
-	fluid_player_join(_fluid_player);
-	delete_fluid_player(_fluid_player);
-	fluid_synth_system_reset(_fluid_synth);
-	_fluid_player = nullptr;
+	if (_fluid_player != nullptr) {
+		fluid_player_stop(_fluid_player);
+		fluid_player_join(_fluid_player);
+		delete_fluid_player(_fluid_player);
+		_fluid_player = nullptr;
+	}
+	if (_fluid_synth != nullptr) {
+		fluid_synth_system_reset(_fluid_synth);
+	}
 
 	_mutex->lock();
 	_exiting = true;
 	_mutex->unlock();
 
-	if (!_doom_thread.is_null() && _doom_thread->is_started()) {
-		_doom_thread->wait_to_finish();
-	}
-
-	if (!_wad_thread.is_null() && _wad_thread->is_started()) {
-		_wad_thread->wait_to_finish();
-	}
-
-	if (!_midi_fetching_thread.is_null() && _midi_fetching_thread->is_started()) {
-		_midi_fetching_thread->wait_to_finish();
-	}
-
-	if (!_sound_fetching_thread.is_null() && _sound_fetching_thread->is_started()) {
-		_sound_fetching_thread->wait_to_finish();
-	}
-
-	if (!_midi_thread.is_null() && _midi_thread->is_started()) {
-		_midi_thread->wait_to_finish();
-	}
-
 	int result = shm_unlink(_shm_id);
 	if (result < 0) {
-		UtilityFunctions::printerr(vformat("ERROR unlinking shm %s: %s", _shm_id, strerror(errno)));
+		fprintf(stderr, "ERROR unlinking shm %s: %s", _shm_id, strerror(errno));
 	}
 
 	if (_spawn_pid > 0) {
@@ -1009,6 +980,16 @@ void DOOM::_process(double delta) {
 	_update_screen_buffer();
 	_update_sounds();
 	_update_music();
+
+	if (!has_focus()) {
+		for (Key key_pressed : _keys_pressed) {
+			mutex_lock(_shm);
+			_shm->keys_pressed[_shm->keys_pressed_length] = key_pressed;
+			_shm->keys_pressed_length += 1;
+			mutex_unlock(_shm);
+		}
+		_keys_pressed.clear();
+	}
 }
 
 void DOOM::_update_screen_buffer() {
@@ -1125,6 +1106,60 @@ void DOOM::_update_music() {
 	_current_midi_playback = playback;
 }
 
+void DOOM::_update_input() {
+	if (_shm == nullptr) {
+		return;
+	}
+
+	for (Key key_pressed : _keys_pressed_queue) {
+		if (!_keys_pressed.has(key_pressed)) {
+			_keys_pressed.append(key_pressed);
+		}
+
+		mutex_lock(_shm);
+		_shm->keys_pressed[_shm->keys_pressed_length] = key_pressed | (1 << 31);
+		_shm->keys_pressed_length += 1;
+		mutex_unlock(_shm);
+	}
+	_keys_pressed_queue.clear();
+
+	for (Key key_released : _keys_released_queue) {
+		if (_keys_pressed.has(key_released)) {
+			_keys_pressed.erase(key_released);
+		}
+
+		mutex_lock(_shm);
+		_shm->keys_pressed[_shm->keys_pressed_length] = key_released;
+		_shm->keys_pressed_length += 1;
+		mutex_unlock(_shm);
+	}
+	_keys_released_queue.clear();
+
+	for (MouseButton mouse_button_pressed : _mouse_buttons_pressed_queue) {
+		if (!_mouse_buttons_pressed.has(mouse_button_pressed)) {
+			_mouse_buttons_pressed.append(mouse_button_pressed);
+		}
+
+		mutex_lock(_shm);
+		_shm->mouse_buttons_pressed[_shm->mouse_buttons_pressed_length] = mouse_button_pressed | (1 << 31);
+		_shm->mouse_buttons_pressed_length += 1;
+		mutex_unlock(_shm);
+	}
+	_mouse_buttons_pressed_queue.clear();
+
+	for (MouseButton mouse_button_released : _mouse_buttons_released_queue) {
+		if (_mouse_buttons_pressed.has(mouse_button_released)) {
+			_mouse_buttons_pressed.erase(mouse_button_released);
+		}
+
+		mutex_lock(_shm);
+		_shm->mouse_buttons_pressed[_shm->mouse_buttons_pressed_length] = mouse_button_released;
+		_shm->mouse_buttons_pressed_length += 1;
+		mutex_unlock(_shm);
+	}
+	_mouse_buttons_released_queue.clear();
+}
+
 void DOOM::_doom_thread_func() {
 	while (true) {
 		if (_exiting || !_enabled) {
@@ -1177,19 +1212,19 @@ void DOOM::_doom_thread_func() {
 		mutex_unlock(_shm);
 
 		// Music
+		mutex_lock(_shm);
 		for (int i = 0; i < _shm->music_instructions_length; i++) {
-			mutex_lock(_shm);
 			MusicInstruction instruction;
 			MusicInstruction_duplicate(&_shm->music_instructions[i], &instruction);
-			mutex_unlock(_shm);
 			_music_instructions.append(instruction);
 		}
-		mutex_lock(_shm);
 		_shm->music_instructions_length = 0;
 		mutex_unlock(_shm);
 
 		// Let's sleep the time Doom asks
 		OS::get_singleton()->delay_usec(_shm->sleep_ms * 1000);
+
+		_update_input();
 
 		// Reset the shared memory
 		mutex_lock(_shm);
@@ -1234,9 +1269,40 @@ DOOM::DOOM() {
 }
 
 DOOM::~DOOM() {
-	delete_fluid_player(_fluid_player);
-	delete_fluid_synth(_fluid_synth);
-	delete_fluid_settings(_fluid_settings);
+	if (_fluid_player != nullptr) {
+		delete_fluid_player(_fluid_player);
+	}
+	if (_fluid_synth != nullptr) {
+		delete_fluid_synth(_fluid_synth);
+	}
+	if (_fluid_settings != nullptr) {
+		delete_fluid_settings(_fluid_settings);
+	}
+
+	if (!_doom_thread.is_null() && _doom_thread->is_started()) {
+		printf("_doom_thread wait to finish\n");
+		_doom_thread->wait_to_finish();
+	}
+
+	if (!_wad_thread.is_null() && _wad_thread->is_started()) {
+		printf("_wad_thread wait to finish\n");
+		_wad_thread->wait_to_finish();
+	}
+
+	if (!_midi_fetching_thread.is_null() && _midi_fetching_thread->is_started()) {
+		printf("_midi_fetching_thread wait to finish\n");
+		_midi_fetching_thread->wait_to_finish();
+	}
+
+	if (!_sound_fetching_thread.is_null() && _sound_fetching_thread->is_started()) {
+		printf("_sound_fetching_thread wait to finish\n");
+		_sound_fetching_thread->wait_to_finish();
+	}
+
+	if (!_midi_thread.is_null() && _midi_thread->is_started()) {
+		printf("_midi_thread wait to finish\n");
+		_midi_thread->wait_to_finish();
+	}
 }
 
 int DOOM::_last_doom_instance_id = 0;
