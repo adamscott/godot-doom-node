@@ -71,8 +71,8 @@ private:
 	Ref<Thread> _doom_thread = nullptr;
 	Ref<Thread> _midi_thread = nullptr;
 	Ref<Thread> _wad_thread = nullptr;
-	Ref<Thread> sound_fetching_thread = nullptr;
-	Ref<Thread> midi_fetching_thread = nullptr;
+	Ref<Thread> _sound_fetching_thread = nullptr;
+	Ref<Thread> _midi_fetching_thread = nullptr;
 
 	SharedMemory *_shm;
 	__pid_t _spawn_pid;
@@ -139,6 +139,7 @@ private:
 
 	void _init_doom();
 	void _kill_doom();
+	void _stop_doom();
 	__pid_t _launch_doom_executable();
 
 	void _update_screen_buffer();

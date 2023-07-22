@@ -43,4 +43,3 @@ fast_unsafe = ARGUMENTS.get("fast_unsafe", "yes")
 if ARGUMENTS.get("platform", "linux") == "linux":
     use_llvm = ARGUMENTS.get("use_llvm", "yes") 
     linker = ARGUMENTS.get("linker", "mold") 
-    print("LINUX")

@@ -29,8 +29,6 @@ boolean middle_mouse_button_pressed = false;
 boolean right_mouse_button_pressed = false;
 
 int main(int argc, char **argv) {
-	printf("Hello, World! from spawn\n");
-
 	if (argc < 3) {
 		printf("Error, missing arguments.\n");
 		return EXIT_FAILURE;

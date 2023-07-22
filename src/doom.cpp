@@ -369,21 +369,30 @@ void DOOM::_update_doom() {
 	} else {
 		_enabled = false;
 		if (_spawn_pid > 0) {
-			_kill_doom();
+			_stop_doom();
 		}
 	}
 }
 
 void DOOM::_init_doom() {
-	_exiting = false;
+	UtilityFunctions::print("_init_doom");
 
-	_init_shm();
+	if (_spawn_pid == 0) {
+		_init_shm();
+	}
 
 	mutex_lock(_shm);
 	_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
 	mutex_unlock(_shm);
 
-	_spawn_pid = _launch_doom_executable();
+	if (_spawn_pid == 0) {
+		_spawn_pid = _launch_doom_executable();
+	} else {
+#ifdef LINUX_ENABLED
+		UtilityFunctions::print("SIGCONT");
+		kill(_spawn_pid, SIGCONT);
+#endif
+	}
 
 	_screen_buffer_array.resize(sizeof(_screen_buffer));
 
@@ -454,7 +463,7 @@ void DOOM::_midi_thread_func() {
 		_mutex->unlock();
 
 		_mutex->lock();
-		if (_exiting) {
+		if (_exiting || !_enabled) {
 			_mutex->unlock();
 			return;
 		}
@@ -495,7 +504,6 @@ void DOOM::_midi_thread_func() {
 							_fluid_player = new_fluid_player(_fluid_synth);
 						} else if (midi_file != _current_midi_file) {
 							_stop_music();
-
 							OS::get_singleton()->delay_usec(100);
 
 							_fluid_player = new_fluid_player(_fluid_synth);
@@ -549,7 +557,7 @@ void DOOM::_midi_thread_func() {
 				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
 					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_STOP_SONG");
 					_stop_music();
-						OS::get_singleton()->delay_usec(100);
+					OS::get_singleton()->delay_usec(100);
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
@@ -559,7 +567,7 @@ void DOOM::_midi_thread_func() {
 					}
 
 					_stop_music();
-						OS::get_singleton()->delay_usec(100);
+					OS::get_singleton()->delay_usec(100);
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {
@@ -577,7 +585,7 @@ void DOOM::_midi_thread_func() {
 		_mutex->unlock();
 
 		_mutex->lock();
-		if (_exiting) {
+		if (_exiting || !_enabled) {
 			_mutex->unlock();
 			return;
 		}
@@ -876,8 +884,8 @@ void DOOM::_wad_thread_end() {
 }
 
 void DOOM::_sound_fetching_thread_end() {
-	if (sound_fetching_thread->is_alive()) {
-		sound_fetching_thread->wait_to_finish();
+	if (_sound_fetching_thread->is_alive()) {
+		_sound_fetching_thread->wait_to_finish();
 	}
 
 	_append_sounds();
@@ -887,8 +895,8 @@ void DOOM::_sound_fetching_thread_end() {
 }
 
 void DOOM::_midi_fetching_thread_end() {
-	if (sound_fetching_thread->is_alive()) {
-		sound_fetching_thread->wait_to_finish();
+	if (_sound_fetching_thread->is_alive()) {
+		_sound_fetching_thread->wait_to_finish();
 	}
 
 	_append_music();
@@ -898,15 +906,15 @@ void DOOM::_midi_fetching_thread_end() {
 }
 
 void DOOM::_start_sound_fetching() {
-	sound_fetching_thread.instantiate();
+	_sound_fetching_thread.instantiate();
 	Callable func = Callable(this, "_sound_fetching_thread_func");
-	sound_fetching_thread->start(func);
+	_sound_fetching_thread->start(func);
 }
 
 void DOOM::_start_midi_fetching() {
-	midi_fetching_thread.instantiate();
+	_midi_fetching_thread.instantiate();
 	Callable func = Callable(this, "_midi_fetching_thread_func");
-	midi_fetching_thread->start(func);
+	_midi_fetching_thread->start(func);
 }
 
 void DOOM::_update_assets_status() {
@@ -937,12 +945,24 @@ void DOOM::_kill_doom() {
 	_exiting = true;
 	_mutex->unlock();
 
-	if (!_doom_thread.is_null()) {
+	if (!_doom_thread.is_null() && _doom_thread->is_started()) {
 		_doom_thread->wait_to_finish();
 	}
 
-	if (!_wad_thread.is_null()) {
+	if (!_wad_thread.is_null() && _wad_thread->is_started()) {
 		_wad_thread->wait_to_finish();
+	}
+
+	if (!_midi_fetching_thread.is_null() && _midi_fetching_thread->is_started()) {
+		_midi_fetching_thread->wait_to_finish();
+	}
+
+	if (!_sound_fetching_thread.is_null() && _sound_fetching_thread->is_started()) {
+		_sound_fetching_thread->wait_to_finish();
+	}
+
+	if (!_midi_thread.is_null() && _midi_thread->is_started()) {
+		_midi_thread->wait_to_finish();
 	}
 
 	int result = shm_unlink(_shm_id);
@@ -954,6 +974,28 @@ void DOOM::_kill_doom() {
 		kill(_spawn_pid, SIGKILL);
 	}
 	_spawn_pid = 0;
+}
+
+void DOOM::_stop_doom() {
+	UtilityFunctions::print("Stop doom");
+
+	if (_exiting) {
+		return;
+	}
+
+	if (!_doom_thread.is_null()) {
+		_doom_thread->wait_to_finish();
+	}
+
+	if (!_midi_thread.is_null()) {
+		_midi_thread->wait_to_finish();
+	}
+
+	if (_spawn_pid > 0) {
+#ifdef LINUX_ENABLED
+		kill(_spawn_pid, SIGSTOP);
+#endif
+	}
 }
 
 void DOOM::_process(double delta) {
@@ -1082,13 +1124,13 @@ void DOOM::_update_music() {
 
 void DOOM::_doom_thread_func() {
 	while (true) {
-		if (_exiting) {
+		if (_exiting || !_enabled) {
 			return;
 		}
 
 		// Send the tick signal
 		while (!_shm->init) {
-			if (_exiting) {
+			if (_exiting || !_enabled) {
 				return;
 			}
 			OS::get_singleton()->delay_msec(10);
@@ -1104,13 +1146,13 @@ void DOOM::_doom_thread_func() {
 
 		// // Let's wait for the shared memory to be ready
 		while (!_shm->ready) {
-			if (_exiting) {
+			if (_exiting || !_enabled) {
 				return;
 			}
 			OS::get_singleton()->delay_msec(10);
 		}
 
-		if (_exiting) {
+		if (_exiting || !_enabled) {
 			return;
 		}
 		// The shared memory is ready
@@ -1150,10 +1192,6 @@ void DOOM::_doom_thread_func() {
 		mutex_lock(_shm);
 		_shm->ready = false;
 		mutex_unlock(_shm);
-
-		if (_exiting) {
-			return;
-		}
 	}
 }
 
