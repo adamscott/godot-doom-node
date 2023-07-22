@@ -11,9 +11,11 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include "doomgeneric/d_event.h"
 #include "doomgeneric/d_mode.h"
 #include "doomgeneric/doomgeneric.h"
 #include "doomgeneric/doomkeys.h"
+#include "doomgeneric/g_game.h"
 
 #include "doomcommon.h"
 #include "doominput.h"
@@ -108,6 +110,19 @@ void tick() {
 	mutex_unlock(shm);
 
 	doomgeneric_Tick();
+
+	if (shm->terminate && shm->autosave) {
+		printf("terminate/quicksave\n");
+		G_SaveGame(5, strdup("GODOT DOOM QUICKSAVE"));
+		// needs a tick to save
+		doomgeneric_Tick();
+		doomgeneric_Tick();
+		doomgeneric_Tick();
+
+		while (true) {
+			usleep(10);
+		}
+	}
 
 	mutex_lock(shm);
 	shm->ready = true;

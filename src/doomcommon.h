@@ -71,6 +71,7 @@ typedef struct SharedMemory {
 	uint8_t ready : 1;
 	uint8_t init : 1;
 	uint8_t lock : 1;
+	uint8_t autosave : 1;
 	uint8_t sound_instructions_length;
 	SoundInstruction sound_instructions[UINT8_MAX];
 	uint8_t music_instructions_length;

@@ -85,7 +85,7 @@ private:
 	bool _enabled = false;
 	bool _wasd_mode = false;
 	float _mouse_acceleration = 1.0f;
-	bool _mouse_captured = false;
+	bool _autosave = false;
 
 	String _wad_path;
 	String _soundfont_path;
@@ -151,6 +151,8 @@ public:
 	DOOM();
 	~DOOM();
 
+	bool get_autosave();
+	void set_autosave(bool p_autosave);
 	bool get_wasd_mode();
 	void set_wasd_mode(bool p_wasd_mode);
 	float get_mouse_acceleration();

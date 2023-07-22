@@ -134,6 +134,10 @@ void DOOM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_mouse_acceleration"), &DOOM::get_mouse_acceleration);
 	ClassDB::bind_method(D_METHOD("set_mouse_acceleration", "mouse_acceleration"), &DOOM::set_mouse_acceleration);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "mouse_acceleration"), "set_mouse_acceleration", "get_mouse_acceleration");
+
+	ClassDB::bind_method(D_METHOD("get_autosave"), &DOOM::get_autosave);
+	ClassDB::bind_method(D_METHOD("set_autosave", "autosave"), &DOOM::set_autosave);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "autosave"), "set_autosave", "get_autosave");
 }
 
 void DOOM::_ready() {
@@ -144,6 +148,8 @@ void DOOM::_ready() {
 void DOOM::_enter_tree() {}
 
 void DOOM::_exit_tree() {
+	UtilityFunctions::print("_exit_tree()");
+
 	if (_enabled) {
 		_kill_doom();
 	}
@@ -257,6 +263,10 @@ bool DOOM::get_enabled() {
 }
 
 void DOOM::set_enabled(bool p_enabled) {
+	if (p_enabled == _enabled) {
+		return;
+	}
+
 	_enabled = p_enabled;
 
 	_update_doom();
@@ -287,6 +297,20 @@ void DOOM::set_soundfont_path(String p_soundfont_path) {
 		_fluid_synth_id = -1;
 	}
 	_mutex->unlock();
+}
+
+bool DOOM::get_autosave() {
+	return _autosave;
+}
+
+void DOOM::set_autosave(bool p_autosave) {
+	_autosave = p_autosave;
+
+	if (_shm != nullptr) {
+		mutex_lock(_shm);
+		_shm->autosave = true;
+		mutex_unlock(_shm);
+	}
 }
 
 bool DOOM::get_wasd_mode() {
@@ -332,6 +356,7 @@ void DOOM::import_assets() {
 }
 
 void DOOM::_update_doom() {
+	UtilityFunctions::print("_update_doom");
 	if (_enabled && _assets_ready) {
 		_init_doom();
 	} else {
@@ -355,8 +380,17 @@ void DOOM::_init_doom() {
 
 	_screen_buffer_array.resize(sizeof(_screen_buffer));
 
-	_doom_thread.instantiate();
-	_midi_thread.instantiate();
+	if (_doom_thread.is_null()) {
+		_doom_thread.instantiate();
+		_midi_thread.instantiate();
+	} else {
+		if (_doom_thread->is_started()) {
+			_doom_thread->wait_to_finish();
+		}
+		if (_midi_thread->is_started()) {
+			_midi_thread->wait_to_finish();
+		}
+	}
 
 	Callable doom_func = Callable(this, "_doom_thread_func");
 	_doom_thread->start(doom_func);
@@ -410,6 +444,13 @@ void DOOM::_midi_thread_func() {
 	while (true) {
 		_mutex->lock();
 		Vector<MusicInstruction> instructions = _music_instructions;
+		_mutex->unlock();
+
+		_mutex->lock();
+		if (_exiting) {
+			_mutex->unlock();
+			return;
+		}
 		_mutex->unlock();
 
 		// Parse music instructions already, sooner the better
@@ -1123,6 +1164,8 @@ void DOOM::_doom_thread_func() {
 }
 
 void DOOM::_init_shm() {
+	UtilityFunctions::print("_init_shm");
+
 	_doom_instance_id = _last_doom_instance_id;
 	_last_doom_instance_id += 1;
 
@@ -1142,6 +1185,10 @@ void DOOM::_init_shm() {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));
 		return;
 	}
+
+	mutex_lock(_shm);
+	_shm->autosave = _autosave;
+	mutex_unlock(_shm);
 }
 
 DOOM::DOOM() {
