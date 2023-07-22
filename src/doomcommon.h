@@ -69,6 +69,7 @@ typedef struct SharedMemory {
 	uint32_t sleep_ms;
 	uint8_t terminate : 1;
 	uint8_t ready : 1;
+	uint8_t tick : 1;
 	uint8_t init : 1;
 	uint8_t lock : 1;
 	uint8_t autosave : 1;

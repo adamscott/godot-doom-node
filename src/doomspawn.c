@@ -23,38 +23,13 @@
 #include "doomshm.h"
 
 boolean terminate = false;
-boolean start_loop = false;
 
 boolean left_mouse_button_pressed = false;
 boolean middle_mouse_button_pressed = false;
 boolean right_mouse_button_pressed = false;
 
-void signal_handler(int signal) {
-	// printf("signal_handler %d\n", signal);
-	switch (signal) {
-		case SIGUSR1: {
-			// printf("start_loop = true\n");
-			start_loop = true;
-		} break;
-
-		case SIGSEGV: {
-			printf("SIGSEGV :O");
-			exit(EXIT_FAILURE);
-		} break;
-
-		default: {
-			exit(EXIT_FAILURE);
-		}
-	}
-}
-
 int main(int argc, char **argv) {
 	printf("Hello, World! from spawn\n");
-
-	if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
-		printf("Error while setting the signal handler.\n", stderr);
-		return EXIT_FAILURE;
-	}
 
 	if (argc < 3) {
 		printf("Error, missing arguments.\n");
@@ -89,8 +64,10 @@ int main(int argc, char **argv) {
 			exit(EXIT_SUCCESS);
 		}
 
-		if (start_loop) {
-			start_loop = false;
+		if (shm->tick) {
+			mutex_lock(shm);
+			shm->tick = false;
+			mutex_unlock(shm);
 			tick();
 		}
 

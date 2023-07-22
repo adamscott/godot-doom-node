@@ -1102,7 +1102,10 @@ void DOOM::_doom_thread_func() {
 			}
 			OS::get_singleton()->delay_msec(10);
 		}
-		kill(_spawn_pid, SIGUSR1);
+
+		mutex_lock(_shm);
+		_shm->tick = true;
+		mutex_unlock(_shm);
 
 		mutex_lock(_shm);
 		_shm->ticks_msec = Time::get_singleton()->get_ticks_msec();
