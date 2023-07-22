@@ -6,6 +6,7 @@
 #include "doomgeneric/sha1.h"
 
 #include "doomcommon.h"
+#include "doommutex.h"
 #include "doomshm.h"
 #include "doomspawn.h"
 
@@ -21,8 +22,10 @@ static LumpSha1 lump_sha1_list[UINT8_MAX];
 static uint8_t lump_sha1_list_size = 0;
 
 static void add_instruction(MusicInstruction inst) {
+	mutex_lock(shm);
 	MusicInstruction_duplicate(&inst, &shm->music_instructions[shm->music_instructions_length]);
 	shm->music_instructions_length++;
+	mutex_unlock(shm);
 }
 
 static boolean get_sha1_hex_from_handle(void *handle, char *buffer) {

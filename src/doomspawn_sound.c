@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include "doomcommon.h"
+#include "doommutex.h"
 #include "doomshm.h"
 #include "doomspawn.h"
 
@@ -30,8 +31,10 @@ static snddevice_t sound_godot_devices[] = {
 };
 
 static void add_instruction(SoundInstruction inst) {
+	mutex_lock(shm);
 	SoundInstruction_duplicate(&inst, &shm->sound_instructions[shm->sound_instructions_length]);
 	shm->sound_instructions_length++;
+	mutex_unlock(shm);
 }
 
 static void GetSfxLumpName(sfxinfo_t *sfx, char *buf, size_t buf_len) {
