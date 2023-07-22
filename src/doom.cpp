@@ -1068,7 +1068,8 @@ void DOOM::_doom_thread_func() {
 		// Sounds
 		for (int i = 0; i < _shm->sound_instructions_length; i++) {
 			mutex_lock(_shm);
-			SoundInstruction instruction = _shm->sound_instructions[i];
+			SoundInstruction instruction;
+			memcpy(&instruction, &_shm->sound_instructions[i], sizeof(SoundInstruction));
 			mutex_unlock(_shm);
 			_sound_instructions.append(instruction);
 		}
@@ -1079,7 +1080,8 @@ void DOOM::_doom_thread_func() {
 		// Music
 		for (int i = 0; i < _shm->music_instructions_length; i++) {
 			mutex_lock(_shm);
-			MusicInstruction instruction = _shm->music_instructions[i];
+			MusicInstruction instruction;
+			memcpy(&instruction, &_shm->music_instructions[i], sizeof(MusicInstruction));
 			mutex_unlock(_shm);
 			_music_instructions.append(instruction);
 		}
