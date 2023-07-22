@@ -355,6 +355,19 @@ void DOOM::import_assets() {
 	_wad_thread->start(wad_func);
 }
 
+void DOOM::_stop_music() {
+	if (_fluid_player != nullptr) {
+		fluid_player_stop(_fluid_player);
+		fluid_player_join(_fluid_player);
+		delete_fluid_player(_fluid_player);
+		_fluid_player = nullptr;
+	}
+
+	if (_fluid_synth != nullptr) {
+		fluid_synth_system_reset(_fluid_synth);
+	}
+}
+
 void DOOM::_update_doom() {
 	UtilityFunctions::print("_update_doom");
 	if (_enabled && _assets_ready) {
@@ -487,11 +500,7 @@ void DOOM::_midi_thread_func() {
 						if (_fluid_player == nullptr) {
 							_fluid_player = new_fluid_player(_fluid_synth);
 						} else if (midi_file != _current_midi_file) {
-							fluid_player_stop(_fluid_player);
-							fluid_player_join(_fluid_player);
-							delete_fluid_player(_fluid_player);
-							fluid_synth_system_reset(_fluid_synth);
-							_fluid_player = nullptr;
+							_stop_music();
 
 							OS::get_singleton()->delay_usec(100);
 
@@ -545,30 +554,18 @@ void DOOM::_midi_thread_func() {
 				case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC:
 				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
 					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_STOP_SONG");
-					if (_fluid_player != nullptr) {
-						fluid_player_stop(_fluid_player);
-						fluid_player_join(_fluid_player);
-						delete_fluid_player(_fluid_player);
-						fluid_synth_system_reset(_fluid_synth);
-						_fluid_player = nullptr;
-
+					_stop_music();
 						OS::get_singleton()->delay_usec(100);
-					}
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
 					UtilityFunctions::print("MUSIC_INSTRUCTION_TYPE_PAUSE_SONG");
 					if (_fluid_player != nullptr) {
 						_current_midi_tick = fluid_player_get_current_tick(_fluid_player);
-
-						fluid_player_stop(_fluid_player);
-						fluid_player_join(_fluid_player);
-						delete_fluid_player(_fluid_player);
-						fluid_synth_system_reset(_fluid_synth);
-						_fluid_player = nullptr;
-
-						OS::get_singleton()->delay_usec(100);
 					}
+
+					_stop_music();
+						OS::get_singleton()->delay_usec(100);
 				} break;
 
 				case MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {

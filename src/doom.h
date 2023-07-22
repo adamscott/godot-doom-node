@@ -135,6 +135,8 @@ private:
 	void _start_midi_fetching();
 	void _update_assets_status();
 
+	void _stop_music();
+
 	void _init_doom();
 	void _kill_doom();
 	__pid_t _launch_doom_executable();
