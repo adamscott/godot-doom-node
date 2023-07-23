@@ -69,11 +69,11 @@ private:
 	bool _midi_fetch_complete = false;
 
 	Ref<Mutex> _mutex;
-	Ref<Thread> _doom_thread = nullptr;
-	Ref<Thread> _midi_thread = nullptr;
-	Ref<Thread> _wad_thread = nullptr;
-	Ref<Thread> _sound_fetching_thread = nullptr;
-	Ref<Thread> _midi_fetching_thread = nullptr;
+	Ref<Thread> _doom_thread;
+	Ref<Thread> _midi_thread;
+	Ref<Thread> _wad_thread;
+	Ref<Thread> _sound_fetching_thread;
+	Ref<Thread> _midi_fetching_thread;
 
 	SharedMemory *_shm;
 	__pid_t _spawn_pid;
@@ -141,6 +141,7 @@ private:
 	void _start_sound_fetching();
 	void _start_midi_fetching();
 	void _update_assets_status();
+	void _close_threads();
 
 	void _stop_music();
 
@@ -180,6 +181,8 @@ public:
 	void set_soundfont_path(String p_soundfont_path);
 
 	void import_assets();
+	void pause();
+	void resume();
 
 	virtual void _enter_tree() override;
 	virtual void _exit_tree() override;
