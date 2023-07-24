@@ -141,7 +141,8 @@ private:
 	void _start_sound_fetching();
 	void _start_midi_fetching();
 	void _update_assets_status();
-	void _close_threads();
+	void _wait_for_threads();
+	void _start_threads();
 
 	void _stop_music();
 
