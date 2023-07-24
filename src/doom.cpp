@@ -508,6 +508,7 @@ void DOOM::_doom_thread_func() {
 		mutex_unlock(_shm);
 
 		// Sounds
+		_mutex->lock();
 		for (int i = 0; i < _shm->sound_instructions_length; i++) {
 			mutex_lock(_shm);
 			SoundInstruction instruction;
@@ -515,11 +516,13 @@ void DOOM::_doom_thread_func() {
 			mutex_unlock(_shm);
 			_sound_instructions.append(instruction);
 		}
+		_mutex->unlock();
 		mutex_lock(_shm);
 		_shm->sound_instructions_length = 0;
 		mutex_unlock(_shm);
 
 		// Music
+		_mutex->lock();
 		mutex_lock(_shm);
 		for (int i = 0; i < _shm->music_instructions_length; i++) {
 			MusicInstruction instruction;
@@ -528,6 +531,7 @@ void DOOM::_doom_thread_func() {
 		}
 		_shm->music_instructions_length = 0;
 		mutex_unlock(_shm);
+		_mutex->unlock();
 
 		// Let's sleep the time Doom asks
 		OS::get_singleton()->delay_usec(_shm->sleep_ms * 1000);
