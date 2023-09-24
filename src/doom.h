@@ -61,7 +61,7 @@ private:
 
 	static int _last_doom_instance_id;
 	int _doom_instance_id;
-	char _shm_id[255];
+	char _shm_id[255] = "";
 
 	bool _exiting = false;
 	bool _assets_ready = false;
@@ -75,7 +75,7 @@ private:
 	Ref<Thread> _sound_fetching_thread;
 	Ref<Thread> _midi_fetching_thread;
 
-	SharedMemory *_shm;
+	SharedMemory *_shm = nullptr;
 	__pid_t _spawn_pid;
 	int _shm_fd;
 
