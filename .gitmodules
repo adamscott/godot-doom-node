@@ -1,7 +1,7 @@
 [submodule "godot-cpp"]
 	path = godot-cpp
 	url = git@github.com:godotengine/godot-cpp.git
-	branch = godot-4.1-stable
+	branch = master
 	ignore = dirty
 [submodule "thirdparty/fluidsynth"]
 	path = thirdparty/fluidsynth

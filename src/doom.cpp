@@ -284,11 +284,10 @@ String DOOM::get_soundfont_path() {
 void DOOM::set_soundfont_path(String p_soundfont_path) {
 	_soundfont_path = p_soundfont_path;
 	String global_path = ProjectSettings::get_singleton()->globalize_path(p_soundfont_path);
-	const char *global_path_char = global_path.utf8().get_data();
 
 	_mutex->lock();
-	if (fluid_is_soundfont(global_path_char)) {
-		_fluid_synth_id = fluid_synth_sfload(_fluid_synth, global_path_char, true);
+	if (fluid_is_soundfont(global_path.utf8().ptr())) {
+		_fluid_synth_id = fluid_synth_sfload(_fluid_synth, global_path.utf8().ptr(), true);
 	} else if (_fluid_synth_id != -1) {
 		fluid_synth_sfunload(_fluid_synth, _fluid_synth_id, true);
 		_fluid_synth_id = -1;

@@ -45,7 +45,7 @@ env = SConscript("godot-cpp/SConstruct", {
 # - LINKFLAGS are for linking flags
 
 # tweak this if you want to use different folders, or more folders, to store your source code in.
-spawn_executable_name = f"godot-doom-spawn{env['suffix']}{env['PROGSUFFIX']}"
+spawn_executable_name = f"godot-doom-node-spawn{env['suffix']}{env['PROGSUFFIX']}"
 
 env.Append(CPPPATH=[os.path.abspath("src/"), os.path.abspath("thirdparty/doomgeneric")])
 env.Append(CPPDEFINES=["FEATURE_SOUND_GODOT", f"SPAWN_EXECUTABLE_NAME=\"\\\"{spawn_executable_name}\\\"\""])
@@ -77,9 +77,9 @@ root_demo_addons = os.path.join("demo", root_addons)
 
 library_name = ""
 if env['platform'] == "macos":
-    library_name = os.path.join(f"libgodot-doom.{env['platform']}.{env['target']}.framework", f"godot-doom.{env['platform']}.{env['target']}")
+    library_name = os.path.join(f"libgodot-doom-node.{env['platform']}.{env['target']}.framework", f"godot-doom-node.{env['platform']}.{env['target']}")
 else:
-    library_name = f"libgodot-doom{env['suffix']}{env['SHLIBSUFFIX']}"
+    library_name = f"libgodot-doom-node{env['suffix']}{env['SHLIBSUFFIX']}"
 library_path = os.path.join(root_addons, library_name)
 
 library = env.SharedLibrary(
@@ -93,12 +93,7 @@ program = env.Program(
     source=spawn_sources
 )
 
-copy_addons = Command(target=None, source="./copy_addons.py", action=f"python copy_addons.py \"{library_name}\" \"{spawn_executable_name}\"")
-
-Depends(copy_addons, library)
-Depends(copy_addons, program)
-
-Default(library, program, copy_addons)
+Default(library, program)
 
 if env.get("compiledb", False):
     env.Tool("compilation_db")

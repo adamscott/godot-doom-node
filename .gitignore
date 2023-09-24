@@ -18,7 +18,8 @@ mono_crash.*.json
 /godot-cpp
 
 # VSCode
-.vscode/settings.json
+.vscode/*
+!.vscode/extensions.json
 
 # Scons build items
 *.os
@@ -26,6 +27,9 @@ mono_crash.*.json
 *.hpp
 .cache/
 .sconsign.dblite
+
+# Scons custom.py
+/custom.py
 
 # Tool-versions
 .tool-versions
@@ -37,4 +41,5 @@ compile_commands.json
 demo/bin/*
 !demo/bin/godot-doom.gdextension
 
+# Debug builds
 **/addons/godot-doom-node/**/*.template_debug.*

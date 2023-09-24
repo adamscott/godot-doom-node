@@ -1,8 +1,0 @@
-[configuration]
-
-entry_symbol = "godot_doom_library_init"
-compatibility_minimum = 4.1
-
-[libraries]
-
-linux.64="res://addons/godot-doom-node/linux/libgodot-doom.linux.template_debug.x86_64.so"
