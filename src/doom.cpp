@@ -1081,9 +1081,14 @@ void DOOM::_kill_doom() {
 	_exiting = true;
 	_mutex->unlock();
 
-	int result = shm_unlink(_shm_id);
-	if (result < 0) {
-		fprintf(stderr, "ERROR unlinking shm %s: %s\n", _shm_id, strerror(errno));
+	String shm_id = _shm_id;
+	if (shm_id.length() > 0) {
+		// _shm_id is not empty
+		UtilityFunctions::print(vformat("Unlinking %s...", shm_id));
+		int result = shm_unlink(_shm_id);
+		if (result < 0) {
+			fprintf(stderr, "ERROR unlinking shm %s: %s\n", _shm_id, strerror(errno));
+		}
 	}
 
 	if (_spawn_pid > 0) {
