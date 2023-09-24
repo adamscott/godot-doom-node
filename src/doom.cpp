@@ -336,8 +336,8 @@ void DOOM::import_assets() {
 	}
 
 	Ref<DirAccess> user_dir = DirAccess::open("user://");
-	if (!user_dir->dir_exists("godot-doom")) {
-		user_dir->make_dir("godot-doom");
+	if (!user_dir->dir_exists("godot-doom-node")) {
+		user_dir->make_dir("godot-doom-node");
 	}
 
 	if (_wad_thread.is_null()) {
