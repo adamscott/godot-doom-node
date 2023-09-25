@@ -604,7 +604,7 @@ void DOOM::_midi_thread_func() {
 							_fluid_player = new_fluid_player(_fluid_synth);
 						} else if (midi_file != _current_midi_file) {
 							_stop_music();
-							OS::get_singleton()->delay_usec(100);
+							OS::get_singleton()->delay_usec(1000);
 
 							_fluid_player = new_fluid_player(_fluid_synth);
 						}
@@ -1059,6 +1059,8 @@ void DOOM::_wait_for_threads() {
 }
 
 void DOOM::_kill_doom() {
+	_enabled = false;
+
 	if (_shm != nullptr) {
 		mutex_lock(_shm);
 		_shm->terminate = true;

@@ -66,11 +66,6 @@ spawn_sources += doomgeneric_files
 
 # Fluidsynth
 env.Append(LIBS=['fluidsynth'])
-env.Append(LIBPATH=[os.path.abspath(os.path.join("thirdparty", "fluidsynth", "build", "src"))])
-env.Append(CPPPATH=[
-    os.path.abspath(os.path.join("thirdparty", "fluidsynth", "build", "include")), 
-    os.path.abspath(os.path.join("thirdparty", "fluidsynth", "include"))
-])
 
 root_addons = os.path.join(".", "addons", "godot-doom-node", env["platform"])
 root_demo_addons = os.path.join("demo", root_addons)

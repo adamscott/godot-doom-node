@@ -39,11 +39,11 @@ private:
 
 	struct MusHeader {
 		uint8_t id[4];
-		uint16_t score_length;
-		uint16_t score_start;
-		uint16_t primary_channels;
-		uint16_t secondary_channels;
-		uint16_t instrument_count;
+		uint16_t score_length = 0;
+		uint16_t score_start = 0;
+		uint16_t primary_channels = 0;
+		uint16_t secondary_channels = 0;
+		uint16_t instrument_count = 0;
 	};
 
 	// Standard MIDI type 0 header + track header
@@ -62,8 +62,8 @@ private:
 		127, 127, 127, 127, 127, 127, 127, 127
 	};
 
-	uint32_t queued_time;
-	uint32_t track_size;
+	uint32_t queued_time = 0;
+	uint32_t track_size = 0;
 
 	uint8_t controller_map[15] = {
 		0x00, 0x20, 0x01, 0x07, 0x0A, 0x0B, 0x5B, 0x5D,

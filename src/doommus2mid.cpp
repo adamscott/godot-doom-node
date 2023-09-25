@@ -275,21 +275,21 @@ bool DOOMMus2Mid::mus2mid(PackedByteArray &p_mus_input, PackedByteArray &p_midi_
 
 	MusHeader mus_file_header;
 
-	uint8_t event_descriptor;
-	int32_t channel;
+	uint8_t event_descriptor = 0;
+	int32_t channel = 0;
 	MusEvent event;
 
-	uint8_t key;
-	uint8_t controller_number;
-	uint8_t controller_value;
+	uint8_t key = 0;
+	uint8_t controller_number = 0;
+	uint8_t controller_value = 0;
 
 	uint8_t track_size_buffer[4];
 
 	int32_t hit_score_end = 0;
 
-	uint8_t working;
+	uint8_t working = 0;
 
-	uint32_t time_delay;
+	uint32_t time_delay = 0;
 
 	for (channel = 0; channel < NUM_CHANNELS; channel++) {
 		channel_map[channel] = -1;

@@ -60,7 +60,7 @@ private:
 	Dictionary _wad_files;
 
 	static int _last_doom_instance_id;
-	int _doom_instance_id;
+	int _doom_instance_id = 0;
 	char _shm_id[255] = "";
 
 	bool _exiting = false;
@@ -68,16 +68,16 @@ private:
 	bool _sound_fetch_complete = false;
 	bool _midi_fetch_complete = false;
 
-	Ref<Mutex> _mutex;
-	Ref<Thread> _doom_thread;
-	Ref<Thread> _midi_thread;
-	Ref<Thread> _wad_thread;
-	Ref<Thread> _sound_fetching_thread;
-	Ref<Thread> _midi_fetching_thread;
+	Ref<Mutex> _mutex = nullptr;
+	Ref<Thread> _doom_thread = nullptr;
+	Ref<Thread> _midi_thread = nullptr;
+	Ref<Thread> _wad_thread = nullptr;
+	Ref<Thread> _sound_fetching_thread = nullptr;
+	Ref<Thread> _midi_fetching_thread = nullptr;
 
 	SharedMemory *_shm = nullptr;
-	__pid_t _spawn_pid;
-	int _shm_fd;
+	__pid_t _spawn_pid = 0;
+	int _shm_fd = 0;
 
 	Vector<String> _uuids;
 	Vector<SoundInstruction> _sound_instructions;
@@ -107,10 +107,10 @@ private:
 	Dictionary _stored_midi_files;
 	String _current_midi_file;
 
-	fluid_settings_t *_fluid_settings;
-	fluid_synth_t *_fluid_synth;
+	fluid_settings_t *_fluid_settings = nullptr;
+	fluid_synth_t *_fluid_synth = nullptr;
 	int _fluid_synth_id = -1;
-	fluid_player_t *_fluid_player;
+	fluid_player_t *_fluid_player = nullptr;
 
 	Ref<AudioStreamGenerator> _current_midi_stream = nullptr;
 	Ref<AudioStreamGeneratorPlayback> _current_midi_playback = nullptr;
