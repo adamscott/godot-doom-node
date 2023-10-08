@@ -17,7 +17,7 @@ def get_compiledb_file(env):
     return normalize_path(env.get("compiledb_file", "compile_commands.json"))
 
 env = Environment()
-customs = ["custom.py"]
+customs = [os.path.abspath("custom.py")]
 opts = Variables(customs, ARGUMENTS)
 opts.Add(BoolVariable("compiledb", "Generate compilation DB (`compile_commands.json`) for external tools", False))
 opts.Add(
@@ -33,7 +33,8 @@ opts.Update(env)
 clonedEnv = env.Clone()
 clonedEnv["compiledb"] = False
 env = SConscript("godot-cpp/SConstruct", {
-    "env": clonedEnv
+    "env": clonedEnv,
+    "customs": customs
 })
 
 # For reference:
