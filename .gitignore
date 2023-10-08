@@ -27,6 +27,7 @@ mono_crash.*.json
 *.hpp
 .cache/
 .sconsign.dblite
+.scons_cache*/
 
 # Scons custom.py
 /custom.py
