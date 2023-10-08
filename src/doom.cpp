@@ -337,13 +337,10 @@ void DOOM::import_assets() {
 }
 
 void DOOM::pause() {
-	UtilityFunctions::print(vformat("pause"));
 	_stop_doom();
-	UtilityFunctions::print(vformat("pause END"));
 }
 
 void DOOM::resume() {
-	UtilityFunctions::print(vformat("resume"));
 	if (_spawn_pid == 0) {
 		return;
 	}
@@ -360,8 +357,6 @@ void DOOM::resume() {
 	}
 
 	_start_threads();
-
-	UtilityFunctions::print(vformat("resume END"));
 }
 
 void DOOM::_stop_music() {
@@ -378,7 +373,6 @@ void DOOM::_stop_music() {
 }
 
 void DOOM::_update_doom() {
-	UtilityFunctions::print("_update_doom");
 	if (_enabled && _assets_ready) {
 		_init_doom();
 	} else {
@@ -387,8 +381,6 @@ void DOOM::_update_doom() {
 }
 
 void DOOM::_init_doom() {
-	UtilityFunctions::print("_init_doom");
-
 	_enabled = true;
 
 	if (_spawn_pid == 0) {
@@ -1273,8 +1265,6 @@ void DOOM::_update_input() {
 }
 
 void DOOM::_init_shm() {
-	UtilityFunctions::print("_init_shm");
-
 	_doom_instance_id = _last_doom_instance_id;
 	_last_doom_instance_id += 1;
 
