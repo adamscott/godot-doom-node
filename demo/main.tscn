@@ -1,8 +1,6 @@
-[gd_scene load_steps=3 format=3 uid="uid://b5fakufphm7c5"]
+[gd_scene load_steps=2 format=3 uid="uid://b5fakufphm7c5"]
 
 [ext_resource type="Script" path="res://main.gd" id="1_bak3v"]
-
-[sub_resource type="ImageTexture" id="ImageTexture_3tbu6"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_bak3v")
@@ -12,4 +10,3 @@ assets_wad_path = "res://doom/wad/DOOM1.WAD"
 assets_soundfont_path = "res://doom/sf3/MuseScore_General.sf3"
 offset_right = 873.0
 offset_bottom = 547.0
-texture = SubResource("ImageTexture_3tbu6")

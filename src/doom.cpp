@@ -142,17 +142,6 @@ void DOOM::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "autosave"), "set_autosave", "get_autosave");
 }
 
-void DOOM::_ready() {
-	_img_texture.instantiate();
-	set_texture(_img_texture);
-}
-
-void DOOM::_enter_tree() {}
-
-void DOOM::_exit_tree() {
-	_kill_doom();
-}
-
 void DOOM::_input(const Ref<InputEvent> &event) {
 	if (_spawn_pid == 0 || _shm == nullptr || _exiting) {
 		return;
@@ -1115,26 +1104,6 @@ void DOOM::_stop_doom() {
 	}
 }
 
-void DOOM::_process(double delta) {
-	if (_spawn_pid == 0) {
-		return;
-	}
-
-	_update_screen_buffer();
-	_update_sounds();
-	_update_music();
-
-	if (!has_focus()) {
-		for (Key key_pressed : _keys_pressed) {
-			mutex_lock(_shm);
-			_shm->keys_pressed[_shm->keys_pressed_length] = key_pressed;
-			_shm->keys_pressed_length += 1;
-			mutex_unlock(_shm);
-		}
-		_keys_pressed.clear();
-	}
-}
-
 void DOOM::_update_screen_buffer() {
 	memcpy(_screen_buffer_array.ptrw(), _screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA);
 
@@ -1324,6 +1293,47 @@ void DOOM::_init_shm() {
 	if (_shm == nullptr) {
 		UtilityFunctions::printerr(vformat("ERROR: %s", strerror(errno)));
 		return;
+	}
+}
+
+void DOOM::doom_ready() {
+	_img_texture.instantiate();
+	set_texture(_img_texture);
+
+	set_process(true);
+}
+
+void DOOM::doom_process(double delta) {
+	if (_spawn_pid == 0) {
+		return;
+	}
+
+	_update_screen_buffer();
+	_update_sounds();
+	_update_music();
+
+	if (!has_focus()) {
+		for (Key key_pressed : _keys_pressed) {
+			mutex_lock(_shm);
+			_shm->keys_pressed[_shm->keys_pressed_length] = key_pressed;
+			_shm->keys_pressed_length += 1;
+			mutex_unlock(_shm);
+		}
+		_keys_pressed.clear();
+	}
+}
+
+void DOOM::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_READY: {
+			doom_ready();
+		} break;
+		case NOTIFICATION_PROCESS: {
+			doom_process(get_process_delta_time());
+		} break;
+		case NOTIFICATION_EXIT_TREE: {
+			_kill_doom();
+		} break;
 	}
 }
 

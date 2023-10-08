@@ -11,6 +11,7 @@
 #include "godot_cpp/classes/image_texture.hpp"
 #include "godot_cpp/classes/input_event.hpp"
 #include "godot_cpp/classes/mutex.hpp"
+#include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/classes/texture_rect.hpp"
 #include "godot_cpp/classes/thread.hpp"
 #include "godot_cpp/classes/wrapped.hpp"
@@ -185,10 +186,11 @@ public:
 	void pause();
 	void resume();
 
-	virtual void _enter_tree() override;
-	virtual void _exit_tree() override;
-	virtual void _ready() override;
-	virtual void _process(double p_delta) override;
+	void _notification(int p_what);
+
+	void doom_ready();
+	void doom_process(double p_delta);
+
 	virtual void _input(const Ref<InputEvent> &event) override;
 };
 
