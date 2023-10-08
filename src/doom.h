@@ -191,7 +191,7 @@ public:
 	void doom_ready();
 	void doom_process(double p_delta);
 
-	virtual void _input(const Ref<InputEvent> &event) override;
+	void _input(const Ref<InputEvent> &event) override;
 };
 
 } // namespace godot

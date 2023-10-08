@@ -1301,6 +1301,7 @@ void DOOM::doom_ready() {
 	set_texture(_img_texture);
 
 	set_process(true);
+	set_process_input(true);
 }
 
 void DOOM::doom_process(double delta) {
