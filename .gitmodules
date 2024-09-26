@@ -3,3 +3,6 @@
 	url = git@github.com:godotengine/godot-cpp.git
 	branch = master
 	ignore = dirty
+[submodule "thirdparty/doomgeneric"]
+	path = thirdparty/doomgeneric
+	url = https://github.com/ozkl/doomgeneric

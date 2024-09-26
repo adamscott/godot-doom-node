@@ -54,12 +54,15 @@ env.Append(CPPDEFINES=["FEATURE_SOUND_GODOT", f"SPAWN_EXECUTABLE_NAME=\"\\\"{spa
 sources = Glob("src/*.cpp")
 spawn_sources = Glob("src/*.c")
 doomgeneric_files = Glob("thirdparty/doomgeneric/doomgeneric/*.c", exclude=[
+    "thirdparty/doomgeneric/doomgeneric/doomgeneric_allegro.c",
     "thirdparty/doomgeneric/doomgeneric/doomgeneric_emscripten.c",
     "thirdparty/doomgeneric/doomgeneric/doomgeneric_sdl.c",
     "thirdparty/doomgeneric/doomgeneric/doomgeneric_soso.c",
     "thirdparty/doomgeneric/doomgeneric/doomgeneric_sosox.c",
     "thirdparty/doomgeneric/doomgeneric/doomgeneric_win.c",
     "thirdparty/doomgeneric/doomgeneric/doomgeneric_xlib.c",
+    "thirdparty/doomgeneric/doomgeneric/i_allegromusic.c",
+    "thirdparty/doomgeneric/doomgeneric/i_allegrosound.c",
     "thirdparty/doomgeneric/doomgeneric/i_sdlmusic.c",
     "thirdparty/doomgeneric/doomgeneric/i_sdlsound.c",
 ])
