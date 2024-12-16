@@ -420,7 +420,7 @@ void DOOM::_start_threads() {
 	_midi_thread->start(midi_func);
 }
 
-__pid_t DOOM::_launch_doom_executable() {
+int DOOM::_launch_doom_executable() {
 	String operating_system;
 	String name = OS::get_singleton()->get_name();
 
@@ -454,7 +454,7 @@ __pid_t DOOM::_launch_doom_executable() {
 		NULL
 	};
 
-	__pid_t pid = fork();
+	int pid = fork();
 	if (pid == 0) {
 		execve(args[0], args, envp);
 		exit(0);

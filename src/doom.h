@@ -77,7 +77,7 @@ private:
 	Ref<Thread> _midi_fetching_thread = nullptr;
 
 	SharedMemory *_shm = nullptr;
-	__pid_t _spawn_pid = 0;
+	int _spawn_pid = 0;
 	int _shm_fd = 0;
 
 	Vector<String> _uuids;
@@ -150,7 +150,7 @@ private:
 	void _init_doom();
 	void _kill_doom();
 	void _stop_doom();
-	__pid_t _launch_doom_executable();
+	int _launch_doom_executable();
 
 	void _update_screen_buffer();
 	void _update_sounds();
