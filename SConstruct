@@ -70,6 +70,8 @@ spawn_sources += doomgeneric_files
 
 # Fluidsynth
 env.Append(LIBS=['fluidsynth'])
+if shutil.which("pkg-config"):
+  env.ParseConfig("pkg-config fluidsynth --cflags --libs")
 
 root_addons = os.path.join(".", "addons", "godot-doom-node", env["platform"])
 root_demo_addons = os.path.join("demo", root_addons)
