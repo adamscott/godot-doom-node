@@ -1,0 +1,26 @@
+diff --git a/doomgeneric/i_sound.c b/doomgeneric/i_sound.c
+index c80a9d1..b6c43c0 100644
+--- a/doomgeneric/i_sound.c
++++ b/doomgeneric/i_sound.c
+@@ -18,7 +18,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ 
+-#if defined(FEATURE_SOUND) && !defined(__DJGPP__)
++#if defined(FEATURE_SOUND) && !defined(__DJGPP__) && !defined(FEATURE_SOUND_GODOT)
+ #include <SDL_mixer.h>
+ #endif
+ 
+diff --git a/doomgeneric/i_swap.h b/doomgeneric/i_swap.h
+index 11135c0..189eb82 100644
+--- a/doomgeneric/i_swap.h
++++ b/doomgeneric/i_swap.h
+@@ -23,7 +23,7 @@
+ #ifdef FEATURE_SOUND
+ 
+ 
+-#ifdef __DJGPP__
++#if defined(__DJGPP__) || defined(FEATURE_SOUND_GODOT)
+ 
+ 
+ #define SHORT(x)  ((signed short) (x))

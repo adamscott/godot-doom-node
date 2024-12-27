@@ -44,3 +44,4 @@ demo/bin/*
 
 # Debug builds
 **/addons/godot-doom-node/**/*.template_debug.*
+

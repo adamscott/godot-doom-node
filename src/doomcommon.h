@@ -67,28 +67,6 @@ void static inline MusicInstruction_duplicate(MusicInstruction *p_from, MusicIns
 	strcpy(r_to->lump_sha1_hex, p_from->lump_sha1_hex);
 }
 
-typedef struct SharedMemory {
-	uint64_t ticks_msec;
-	unsigned char *screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
-	char window_title[UINT8_MAX];
-	uint32_t keys_pressed[UINT8_MAX];
-	uint8_t keys_pressed_length;
-	uint32_t mouse_buttons_pressed[UINT8_MAX];
-	uint8_t mouse_buttons_pressed_length;
-	float mouse_x;
-	float mouse_y;
-	uint32_t sleep_ms;
-	uint8_t terminate : 1;
-	uint8_t ready : 1;
-	uint8_t tick : 1;
-	uint8_t init : 1;
-	uint8_t lock : 1;
-	uint8_t sound_instructions_length;
-	SoundInstruction sound_instructions[UINT8_MAX];
-	uint8_t music_instructions_length;
-	MusicInstruction music_instructions[UINT8_MAX];
-} SharedMemory;
-
 #ifdef __cplusplus
 }
 #endif

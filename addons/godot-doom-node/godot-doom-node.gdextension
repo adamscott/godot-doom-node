@@ -6,3 +6,7 @@ compatibility_minimum = "4.3"
 [libraries]
 
 linux.debug.x86_64="res://addons/godot-doom-node/linux/libgodot-doom-node.linux.template_debug.x86_64.so"
+linux.release.x86_64="res://addons/godot-doom-node/linux/libgodot-doom-node.linux.template_release.x86_64.so"
+macos.editor.universal="res://addons/godot-doom-node/macos/libgodot-doom-node.macos.editor.framework/libgodot-doom-node.macos.editor"
+macos.debug.universal="res://addons/godot-doom-node/macos/libgodot-doom-node.macos.template_debug.framework/libgodot-doom-node.macos.template_debug"
+macos.release.universal="res://addons/godot-doom-node/macos/libgodot-doom-node.macos.template_release.framework/libgodot-doom-node.macos.template_release"

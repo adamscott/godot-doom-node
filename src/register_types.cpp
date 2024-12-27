@@ -2,12 +2,13 @@
 
 #include <gdextension_interface.h>
 
-#include "godot_cpp/core/memory.hpp"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
+#include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/godot.hpp>
 
 #include "doom.h"
+#include "doominstance.h"
 #include "doommus2mid.h"
 
 using namespace godot;
@@ -19,6 +20,7 @@ void initialize_godot_doom_module(ModuleInitializationLevel p_level) {
 
 	ClassDB::register_class<DOOM>();
 	ClassDB::register_class<DOOMMus2Mid>();
+	ClassDB::register_class<DOOMInstance>();
 }
 
 void uninitialize_godot_doom_module(ModuleInitializationLevel p_level) {

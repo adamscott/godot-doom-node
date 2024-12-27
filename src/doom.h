@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include "doomgeneric/doomgeneric.h"
+#include "doominstance.h"
 #include "godot_cpp/classes/audio_stream_generator.hpp"
 #include "godot_cpp/classes/audio_stream_generator_playback.hpp"
 #include "godot_cpp/classes/control.hpp"
@@ -21,10 +21,10 @@
 #include "godot_cpp/variant/packed_byte_array.hpp"
 
 extern "C" {
-#include "fluidsynth.h"
+#include <fluidsynth.h>
 
 #include "doomcommon.h"
-#include "doomspawn.h"
+#include "doomgeneric/doomgeneric.h"
 }
 
 namespace godot {
@@ -60,9 +60,7 @@ private:
 	WadSignature _wad_signature;
 	Dictionary _wad_files;
 
-	static int _last_doom_instance_id;
-	int _doom_instance_id = 0;
-	char _shm_id[255] = "";
+	DOOMInstance *_doom_instance = nullptr;
 
 	bool _exiting = false;
 	bool _assets_ready = false;
@@ -75,10 +73,6 @@ private:
 	Ref<Thread> _wad_thread = nullptr;
 	Ref<Thread> _sound_fetching_thread = nullptr;
 	Ref<Thread> _midi_fetching_thread = nullptr;
-
-	SharedMemory *_shm = nullptr;
-	int _spawn_pid = 0;
-	int _shm_fd = 0;
 
 	Vector<String> _uuids;
 	Vector<SoundInstruction> _sound_instructions;
@@ -124,8 +118,6 @@ private:
 	unsigned char _screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
 	PackedByteArray _screen_buffer_array;
 
-	void _init_shm();
-
 	void _doom_thread_func();
 	void _wad_thread_func();
 	void _sound_fetching_thread_func();
@@ -150,7 +142,6 @@ private:
 	void _init_doom();
 	void _kill_doom();
 	void _stop_doom();
-	int _launch_doom_executable();
 
 	void _update_screen_buffer();
 	void _update_sounds();
