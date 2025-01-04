@@ -51,17 +51,10 @@
 #include "doommus2mid.h"
 
 extern "C" {
-#include <err.h>
-#include <spawn.h>
 #include <unistd.h>
 
 // doomgeneric
 #include "doomgeneric/doomgeneric.h"
-
-// Shared memory
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 
 // Fluidsynth
 #include "fluidsynth/midi.h"
