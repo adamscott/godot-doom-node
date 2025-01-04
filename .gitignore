@@ -38,11 +38,16 @@ mono_crash.*.json
 # Clang
 compile_commands.json
 
-# Addons
+# Addons/demo
 demo/bin/*
 !demo/bin/godot-doom.gdextension
 
-# Debug builds
 **/addons/godot-doom-node/**/*.template_debug.*
+**/addons/godot-doom-node/**/*.template_debug
 **/addons/godot-doom-node/**/*.template_release.*
+**/addons/godot-doom-node/**/*.template_release
 **/addons/godot-doom-node/**/*.editor.*
+**/addons/godot-doom-node/**/*.editor
+
+# libdoomgeneric
+libdoomgeneric.a
