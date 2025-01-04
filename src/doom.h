@@ -68,7 +68,6 @@ private:
 	bool _sound_fetch_complete = false;
 	bool _midi_fetch_complete = false;
 
-	Ref<Mutex> _mutex = nullptr;
 	Ref<Thread> _doom_thread = nullptr;
 	Ref<Thread> _midi_thread = nullptr;
 	Ref<Thread> _wad_thread = nullptr;
@@ -76,7 +75,9 @@ private:
 	Ref<Thread> _midi_fetching_thread = nullptr;
 
 	Vector<String> _uuids;
+	Ref<Mutex> _sound_instructions_mutex;
 	Vector<Ref<DOOMSoundInstruction>> _sound_instructions;
+	Ref<Mutex> _music_instructions_mutex;
 	Vector<Ref<DOOMMusicInstruction>> _music_instructions;
 	Vector<Key> _keys_pressed;
 	Vector<Key> _keys_pressed_queue;
@@ -116,8 +117,8 @@ private:
 
 	// TextureRect *texture_rect;
 	Ref<ImageTexture> _img_texture = nullptr;
-	unsigned char _screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4];
-	PackedByteArray _screen_buffer_array;
+	Ref<Mutex> _screen_buffer_mutex = nullptr;
+	PackedByteArray _screen_buffer;
 
 	void _doom_thread_func();
 	void _wad_thread_func();

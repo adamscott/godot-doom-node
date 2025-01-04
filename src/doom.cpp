@@ -46,6 +46,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
+#include "doomcommon.h"
 #include "doominstance.h"
 #include "doommus2mid.h"
 
@@ -350,7 +351,7 @@ void DOOM::_update_doom() {
 void DOOM::_init_doom() {
 	_enabled = true;
 
-	_screen_buffer_array.resize(DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
+	_screen_buffer.resize(SCREEN_BUFFER_SIZE);
 
 	_start_threads();
 }
@@ -399,20 +400,27 @@ void DOOM::_doom_thread_func() {
 		if (_exiting || !_enabled) {
 			return;
 		}
-		// The shared memory is ready
-		// Screenbuffer
 
-		memcpy(_screen_buffer, _doom_instance->buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4);
+		// Screenbuffer
+		_doom_instance->mutex->lock();
+		memcpy(_screen_buffer.ptrw(), _doom_instance->screen_buffer.ptrw(), SCREEN_BUFFER_SIZE);
+		_doom_instance->mutex->unlock();
 
 		// Sounds
-
+		_doom_instance->mutex->lock();
+		_sound_instructions_mutex->lock();
 		_sound_instructions.append_array(_doom_instance->sound_instructions);
 		_doom_instance->sound_instructions.clear();
+		_sound_instructions_mutex->unlock();
+		_doom_instance->mutex->unlock();
 
 		// Music
-
+		_doom_instance->mutex->lock();
+		_music_instructions_mutex->lock();
 		_music_instructions.append_array(_doom_instance->music_instructions);
 		_doom_instance->music_instructions.clear();
+		_music_instructions_mutex->unlock();
+		_doom_instance->mutex->unlock();
 
 		// Let's sleep the time Doom asks
 		OS::get_singleton()->delay_usec(_doom_instance->sleep_ms * 1000);
@@ -429,10 +437,8 @@ void DOOM::_midi_thread_func() {
 
 		// Parse music instructions already, sooner the better
 
+		_music_instructions_mutex->lock();
 		for (Ref<DOOMMusicInstruction> &instruction : _music_instructions) {
-			if (instruction.is_null()) {
-				UtilityFunctions::print(vformat("Hello! %s", "World"));
-			}
 			switch (instruction->type) {
 				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
 					String sha1 = instruction->lump_sha1_hex;
@@ -529,6 +535,7 @@ void DOOM::_midi_thread_func() {
 			}
 		}
 		_music_instructions.clear();
+		_music_instructions_mutex->unlock();
 
 		if (_exiting) {
 			return;
@@ -918,13 +925,9 @@ void DOOM::_stop_doom() {
 }
 
 void DOOM::_update_screen_buffer() {
-	{
-		_doom_instance->mutex->lock();
-		memcpy(_screen_buffer_array.ptrw(), _doom_instance->screen_buffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA);
-		_doom_instance->mutex->unlock();
-	}
-
-	Ref<Image> image = Image::create_from_data(DOOMGENERIC_RESX, DOOMGENERIC_RESY, false, Image::Format::FORMAT_RGBA8, _screen_buffer_array);
+	_screen_buffer_mutex->lock();
+	Ref<Image> image = Image::create_from_data(DOOMGENERIC_RESX, DOOMGENERIC_RESY, false, Image::Format::FORMAT_RGBA8, _screen_buffer);
+	_screen_buffer_mutex->unlock();
 	if (_img_texture->get_image().is_null()) {
 		_img_texture->set_image(image);
 	} else {
@@ -938,6 +941,7 @@ void DOOM::_update_sounds() {
 		return;
 	}
 
+	_sound_instructions_mutex->lock();
 	for (Ref<DOOMSoundInstruction> &instruction : _sound_instructions) {
 		switch (instruction->type) {
 			case DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_START_SOUND: {
@@ -1017,6 +1021,7 @@ void DOOM::_update_sounds() {
 		}
 	}
 	_sound_instructions.clear();
+	_sound_instructions_mutex->unlock();
 }
 
 void DOOM::_update_music() {
@@ -1122,7 +1127,9 @@ void DOOM::_notification(int p_what) {
 }
 
 DOOM::DOOM() {
-	_mutex.instantiate();
+	_screen_buffer_mutex.instantiate();
+	_music_instructions_mutex.instantiate();
+	_sound_instructions_mutex.instantiate();
 
 	_fluid_settings = new_fluid_settings();
 	fluid_settings_setstr(_fluid_settings, "player.timing-source", "system");

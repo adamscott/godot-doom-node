@@ -11,6 +11,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "doomcommon.h"
+#include "godot_cpp/variant/packed_byte_array.hpp"
 
 extern "C" {
 #include "doomgeneric/doomgeneric.h"
@@ -98,11 +99,10 @@ private:
 	uint8_t local_mouse_buttons_pressed_length = 0;
 
 public:
-	Ref<Mutex> mutex;
+	Ref<Mutex> mutex = nullptr;
 
 	uint64_t ticks_msec = 0;
-	unsigned char screen_buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * 4] = {};
-	unsigned char buffer[DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA] = {};
+	PackedByteArray screen_buffer;
 	char window_title[UINT8_MAX] = {};
 	uint32_t keys_pressed[UINT8_MAX] = {};
 	uint8_t keys_pressed_length = 0;

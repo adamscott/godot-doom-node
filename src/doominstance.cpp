@@ -1,4 +1,5 @@
 #include "doominstance.h"
+#include "doomcommon.h"
 
 #include <ctype.h>
 #include <cstdint>
@@ -518,19 +519,28 @@ unsigned char DOOMInstance::convert_to_doom_key(Key p_doom_key) {
 	}
 }
 
-void DOOMInstance::DG_Init() {}
+void DOOMInstance::DG_Init() {
+	screen_buffer.resize(SCREEN_BUFFER_SIZE);
+}
 
 void DOOMInstance::DG_DrawFrame() {
 	if (DG_ScreenBuffer == nullptr) {
 		return;
 	}
 
-	memcpy(screen_buffer, DG_ScreenBuffer, DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA);
-	for (int i = 0; i < DOOMGENERIC_RESX * DOOMGENERIC_RESY * RGBA; i += RGBA) {
-		buffer[i + 0] = screen_buffer[i + 2];
-		buffer[i + 1] = screen_buffer[i + 1];
-		buffer[i + 2] = screen_buffer[i + 0];
-		buffer[i + 3] = 255 - screen_buffer[i + 3];
+	memcpy(screen_buffer.ptrw(), DG_ScreenBuffer, SCREEN_BUFFER_SIZE);
+
+	uint8_t *screen_buffer_ptr = screen_buffer.ptrw();
+	for (int i = 0; i < SCREEN_BUFFER_SIZE; i += RGBA) {
+		uint8_t red = screen_buffer_ptr[i + 2];
+		uint8_t green = screen_buffer_ptr[i + 1];
+		uint8_t blue = screen_buffer_ptr[i + 0];
+		uint8_t alpha = 255 - screen_buffer_ptr[i + 3];
+
+		screen_buffer_ptr[i + 0] = red;
+		screen_buffer_ptr[i + 1] = green;
+		screen_buffer_ptr[i + 2] = blue;
+		screen_buffer_ptr[i + 3] = alpha;
 	}
 }
 

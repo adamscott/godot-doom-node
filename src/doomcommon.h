@@ -6,7 +6,12 @@
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+extern "C" {
+#include "doomgeneric/doomgeneric.h"
+}
+
 #define RGBA 4
+#define SCREEN_BUFFER_SIZE ((DOOMGENERIC_RESX) * (DOOMGENERIC_RESY) * (RGBA))
 
 namespace godot {
 
