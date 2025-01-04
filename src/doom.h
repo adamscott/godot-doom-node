@@ -3,27 +3,28 @@
 
 #include <cstdint>
 
+#include <godot_cpp/classes/audio_stream_generator.hpp>
+#include <godot_cpp/classes/audio_stream_generator_playback.hpp>
+#include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/global_constants.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
+#include <godot_cpp/classes/input_event.hpp>
+#include <godot_cpp/classes/mutex.hpp>
+#include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
+#include <godot_cpp/classes/thread.hpp>
+#include <godot_cpp/classes/wrapped.hpp>
+#include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/templates/vector.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
+
+#include "doomcommon.h"
 #include "doominstance.h"
-#include "godot_cpp/classes/audio_stream_generator.hpp"
-#include "godot_cpp/classes/audio_stream_generator_playback.hpp"
-#include "godot_cpp/classes/control.hpp"
-#include "godot_cpp/classes/global_constants.hpp"
-#include "godot_cpp/classes/image_texture.hpp"
-#include "godot_cpp/classes/input_event.hpp"
-#include "godot_cpp/classes/mutex.hpp"
-#include "godot_cpp/classes/os.hpp"
-#include "godot_cpp/classes/texture_rect.hpp"
-#include "godot_cpp/classes/thread.hpp"
-#include "godot_cpp/classes/wrapped.hpp"
-#include "godot_cpp/core/class_db.hpp"
-#include "godot_cpp/templates/vector.hpp"
-#include "godot_cpp/variant/dictionary.hpp"
-#include "godot_cpp/variant/packed_byte_array.hpp"
 
 extern "C" {
 #include <fluidsynth.h>
 
-#include "doomcommon.h"
 #include "doomgeneric/doomgeneric.h"
 }
 
@@ -75,8 +76,8 @@ private:
 	Ref<Thread> _midi_fetching_thread = nullptr;
 
 	Vector<String> _uuids;
-	Vector<SoundInstruction> _sound_instructions;
-	Vector<MusicInstruction> _music_instructions;
+	Vector<Ref<DOOMSoundInstruction>> _sound_instructions;
+	Vector<Ref<DOOMMusicInstruction>> _music_instructions;
 	Vector<Key> _keys_pressed;
 	Vector<Key> _keys_pressed_queue;
 	Vector<Key> _keys_released_queue;

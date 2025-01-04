@@ -1,74 +1,68 @@
 #ifndef DOOMCOMMON_H
 #define DOOMCOMMON_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
 
-#include <stdint.h>
-#include <string.h>
+#include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/variant/string.hpp>
 
-#include "doomgeneric/doomgeneric.h"
-#include "doomgeneric/doomtype.h"
-#include "doomgeneric/w_wad.h"
-
-#define GODOT_DOOM_SHM_NAME "/doom"
-#define GODOT_DOOM_SPAWN_SHM_ID GODOT_DOOM_SHM_NAME "000000"
 #define RGBA 4
 
-typedef enum SoundInstructionType {
-	SOUND_INSTRUCTION_TYPE_EMPTY,
-	SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND,
-	SOUND_INSTRUCTION_TYPE_START_SOUND,
-	SOUND_INSTRUCTION_TYPE_STOP_SOUND,
-	SOUND_INSTRUCTION_TYPE_UPDATE_SOUND_PARAMS,
-	SOUND_INSTRUCTION_TYPE_SHUTDOWN_SOUND,
-	SOUND_INSTRUCTION_TYPE_MAX
-} SoundInstructionType;
+namespace godot {
 
-typedef struct SoundInstruction {
-	SoundInstructionType type;
-	char name[9];
+class DOOMSoundInstruction : public RefCounted {
+	GDCLASS(DOOMSoundInstruction, RefCounted);
+
+protected:
+	static void _bind_methods() {};
+
+public:
+	enum DOOMSoundInstructionType {
+		SOUND_INSTRUCTION_TYPE_EMPTY,
+		SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND,
+		SOUND_INSTRUCTION_TYPE_START_SOUND,
+		SOUND_INSTRUCTION_TYPE_STOP_SOUND,
+		SOUND_INSTRUCTION_TYPE_UPDATE_SOUND_PARAMS,
+		SOUND_INSTRUCTION_TYPE_SHUTDOWN_SOUND,
+		SOUND_INSTRUCTION_TYPE_MAX
+	};
+
+	DOOMSoundInstructionType type;
+	String name;
 	int32_t channel;
 	int32_t volume;
 	int32_t sep;
 	int32_t pitch;
 	int32_t priority;
 	int32_t usefulness;
-} SoundInstruction;
+};
 
-void static inline SoundInstruction_duplicate(SoundInstruction *p_from, SoundInstruction *r_to) {
-	*r_to = *p_from;
-	strcpy(r_to->name, p_from->name);
-}
+class DOOMMusicInstruction : public RefCounted {
+	GDCLASS(DOOMMusicInstruction, RefCounted);
 
-typedef enum MusicInstructionType {
-	MUSIC_INSTRUCTION_TYPE_EMPTY,
-	MUSIC_INSTRUCTION_TYPE_INIT,
-	MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC,
-	MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME,
-	MUSIC_INSTRUCTION_TYPE_PAUSE_SONG,
-	MUSIC_INSTRUCTION_TYPE_RESUME_SONG,
-	MUSIC_INSTRUCTION_TYPE_REGISTER_SONG,
-	MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG,
-	MUSIC_INSTRUCTION_TYPE_PLAY_SONG,
-	MUSIC_INSTRUCTION_TYPE_STOP_SONG,
-} MusicInstructionType;
+protected:
+	static void _bind_methods() {};
 
-typedef struct MusicInstruction {
-	MusicInstructionType type;
-	char lump_sha1_hex[41];
+public:
+	enum DOOMMusicInstructionType {
+		MUSIC_INSTRUCTION_TYPE_EMPTY,
+		MUSIC_INSTRUCTION_TYPE_INIT,
+		MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC,
+		MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME,
+		MUSIC_INSTRUCTION_TYPE_PAUSE_SONG,
+		MUSIC_INSTRUCTION_TYPE_RESUME_SONG,
+		MUSIC_INSTRUCTION_TYPE_REGISTER_SONG,
+		MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG,
+		MUSIC_INSTRUCTION_TYPE_PLAY_SONG,
+		MUSIC_INSTRUCTION_TYPE_STOP_SONG,
+	};
+
+	DOOMMusicInstructionType type;
+	String lump_sha1_hex;
 	int32_t volume;
-	uint8_t looping : 1;
-} MusicInstruction;
+	bool looping = false;
+};
 
-void static inline MusicInstruction_duplicate(MusicInstruction *p_from, MusicInstruction *r_to) {
-	*r_to = *p_from;
-	strcpy(r_to->lump_sha1_hex, p_from->lump_sha1_hex);
-}
+} //namespace godot
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* DOOMCOMMON_H */
+#endif // DOOMCOMMON_H

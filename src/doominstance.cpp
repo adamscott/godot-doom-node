@@ -1,14 +1,13 @@
 #include "doominstance.h"
 
+#include <ctype.h>
 #include <cstdint>
 
 #include <godot_cpp/classes/global_constants.hpp>
-
-#include "doom.h"
-#include "godot_cpp/variant/utility_functions.hpp"
+#include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 extern "C" {
-#include <ctype.h>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -19,9 +18,6 @@ extern "C" {
 #include "doomgeneric/m_misc.h"
 #include "doomgeneric/sha1.h"
 #include "doomgeneric/w_wad.h"
-
-#include "doomcommon.h"
-#include "doominput.h"
 }
 
 namespace godot {
@@ -42,10 +38,8 @@ snddevice_t DOOMInstanceMusic::music_sdl_devices[DOOMInstanceMusic::MUSIC_SDL_DE
 	SNDDEVICE_AWE32,
 };
 
-void DOOMInstanceMusic::add_instruction(MusicInstruction &p_instruction) {
-	uint8_t length = DOOMInstance::get_singleton()->music_instructions_length;
-	MusicInstruction_duplicate(&p_instruction, &DOOMInstance::get_singleton()->music_instructions[length]);
-	DOOMInstance::get_singleton()->music_instructions_length++;
+void DOOMInstanceMusic::add_instruction(Ref<DOOMMusicInstruction> &p_instruction) {
+	DOOMInstance::get_singleton()->music_instructions.append(p_instruction);
 }
 
 bool DOOMInstanceMusic::get_sha1_hex_from_handle(void *p_handle, char *p_buffer) {
@@ -82,27 +76,31 @@ bool DOOMInstanceMusic::Godot_InitMusic() {
 }
 
 void DOOMInstanceMusic::Godot_ShutdownMusic() {
-	MusicInstruction inst;
-	inst.type = MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC;
+	Ref<DOOMMusicInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC;
 	add_instruction(inst);
 }
 
 void DOOMInstanceMusic::Godot_SetMusicVolume(int p_volume) {
-	MusicInstruction inst;
-	inst.type = MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME;
-	inst.volume = p_volume;
+	Ref<DOOMMusicInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME;
+	inst->volume = p_volume;
 	add_instruction(inst);
 }
 
 void DOOMInstanceMusic::Godot_PauseSong() {
-	MusicInstruction inst;
-	inst.type = MUSIC_INSTRUCTION_TYPE_PAUSE_SONG;
+	Ref<DOOMMusicInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_PAUSE_SONG;
 	add_instruction(inst);
 }
 
 void DOOMInstanceMusic::Godot_ResumeSong() {
-	MusicInstruction inst;
-	inst.type = MUSIC_INSTRUCTION_TYPE_RESUME_SONG;
+	Ref<DOOMMusicInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_RESUME_SONG;
 	add_instruction(inst);
 }
 
@@ -120,9 +118,10 @@ void *DOOMInstanceMusic::Godot_RegisterSong(void *p_data, int p_length) {
 	void *handle = (void *)(uint64_t)lump_sha1_list_size;
 	lump_sha1_list_size++;
 
-	MusicInstruction inst;
-	inst.type = MUSIC_INSTRUCTION_TYPE_REGISTER_SONG;
-	memcpy(inst.lump_sha1_hex, sha.sha1_hex, SHA1_HEX_LEN);
+	Ref<DOOMMusicInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_REGISTER_SONG;
+	inst->lump_sha1_hex = String::utf8((const char *)sha.sha1_hex, SHA1_HEX_LEN);
 	add_instruction(inst);
 
 	return handle;
@@ -135,9 +134,10 @@ void DOOMInstanceMusic::Godot_UnRegisterSong(void *p_handle) {
 		return;
 	}
 
-	MusicInstruction inst;
-	inst.type = MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG;
-	memcpy(inst.lump_sha1_hex, sha1, SHA1_HEX_LEN);
+	Ref<DOOMMusicInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG;
+	inst->lump_sha1_hex = sha1;
 	add_instruction(inst);
 }
 
@@ -148,16 +148,18 @@ void DOOMInstanceMusic::Godot_PlaySong(void *p_handle, boolean p_looping) {
 		return;
 	}
 
-	MusicInstruction inst;
-	inst.type = MUSIC_INSTRUCTION_TYPE_PLAY_SONG;
-	memcpy(inst.lump_sha1_hex, sha1, SHA1_HEX_LEN);
-	inst.looping = true;
+	Ref<DOOMMusicInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_PLAY_SONG;
+	inst->lump_sha1_hex = sha1;
+	inst->looping = true;
 	add_instruction(inst);
 }
 
 void DOOMInstanceMusic::Godot_StopSong() {
-	MusicInstruction inst;
-	inst.type = MUSIC_INSTRUCTION_TYPE_STOP_SONG;
+	Ref<DOOMMusicInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_STOP_SONG;
 	add_instruction(inst);
 }
 
@@ -182,10 +184,8 @@ snddevice_t DOOMInstanceSound::sound_godot_devices[DOOMInstanceSound::SOUND_SDL_
 	SNDDEVICE_AWE32,
 };
 
-void DOOMInstanceSound::add_instruction(SoundInstruction &p_instruction) {
-	uint8_t length = DOOMInstance::get_singleton()->sound_instructions_length;
-	SoundInstruction_duplicate(&p_instruction, &DOOMInstance::get_singleton()->sound_instructions[length]);
-	DOOMInstance::get_singleton()->sound_instructions_length++;
+void DOOMInstanceSound::add_instruction(Ref<DOOMSoundInstruction> &p_instruction) {
+	DOOMInstance::get_singleton()->sound_instructions.append(p_instruction);
 }
 
 void DOOMInstanceSound::GetSfxLumpName(sfxinfo_t *p_sfx, char *p_buffer, size_t p_buffer_length) {
@@ -216,14 +216,14 @@ void DOOMInstanceSound::Godot_PrecacheSounds(sfxinfo_t *p_sounds, int p_num_soun
 		sfxinfo_t *sound = &p_sounds[i];
 		// GetSfxLumpName(sound, namebuf, sizeof(namebuf));
 
-		SoundInstruction inst;
-		inst.type = SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND;
-		// strcpy(inst.name, namebuf);
-		strcpy(inst.name, sound->name);
-		inst.pitch = sound->pitch;
-		inst.volume = sound->volume;
-		inst.priority = sound->priority;
-		inst.usefulness = sound->usefulness;
+		Ref<DOOMSoundInstruction> inst;
+		inst.instantiate();
+		inst->type = DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND;
+		inst->name = sound->name;
+		inst->pitch = sound->pitch;
+		inst->volume = sound->volume;
+		inst->priority = sound->priority;
+		inst->usefulness = sound->usefulness;
 
 		add_instruction(inst);
 	}
@@ -234,21 +234,23 @@ bool DOOMInstanceSound::Godot_SoundIsPlaying(int p_handle) {
 }
 
 void DOOMInstanceSound::Godot_StopSound(int p_handle) {
-	SoundInstruction inst;
-	inst.type = SOUND_INSTRUCTION_TYPE_STOP_SOUND;
-	inst.channel = p_handle;
+	Ref<DOOMSoundInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_STOP_SOUND;
+	inst->channel = p_handle;
 
 	add_instruction(inst);
 }
 
 int DOOMInstanceSound::Godot_StartSound(sfxinfo_t *p_sfxinfo, int p_channel, int p_vol, int p_sep) {
-	SoundInstruction inst;
-	inst.type = SOUND_INSTRUCTION_TYPE_START_SOUND;
-	strcpy(inst.name, p_sfxinfo->name);
-	inst.channel = p_channel;
-	inst.volume = p_vol;
-	inst.sep = p_sep;
-	inst.pitch = p_sfxinfo->pitch;
+	Ref<DOOMSoundInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_START_SOUND;
+	inst->name = p_sfxinfo->name;
+	inst->channel = p_channel;
+	inst->volume = p_vol;
+	inst->sep = p_sep;
+	inst->pitch = p_sfxinfo->pitch;
 
 	add_instruction(inst);
 
@@ -258,10 +260,11 @@ int DOOMInstanceSound::Godot_StartSound(sfxinfo_t *p_sfxinfo, int p_channel, int
 }
 
 void DOOMInstanceSound::Godot_UpdateSoundParams(int p_handle, int p_vol, int p_sep) {
-	SoundInstruction inst;
-	inst.channel = p_handle;
-	inst.volume = p_vol;
-	inst.sep = p_sep;
+	Ref<DOOMSoundInstruction> inst;
+	inst.instantiate();
+	inst->channel = p_handle;
+	inst->volume = p_vol;
+	inst->sep = p_sep;
 }
 
 void DOOMInstanceSound::Godot_UpdateSound() {}
@@ -275,8 +278,9 @@ int DOOMInstanceSound::Godot_GetSfxLumpNum(sfxinfo_t *p_sfx) {
 }
 
 void DOOMInstanceSound::Godot_ShutdownSound() {
-	SoundInstruction inst;
-	inst.type = SOUND_INSTRUCTION_TYPE_SHUTDOWN_SOUND;
+	Ref<DOOMSoundInstruction> inst;
+	inst.instantiate();
+	inst->type = DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_SHUTDOWN_SOUND;
 	add_instruction(inst);
 }
 
@@ -304,7 +308,7 @@ void DOOMInstance::create() {
 	CharStringT<char> _config_dir = config_dir.utf8();
 
 	char *prepared_args[ARGS_LEN] = {
-		strdup("doom"),
+		strdup("godot-doom-node"),
 		strdup("-iwad"),
 		(char *)_wad.get_data(),
 		strdup("-configdir"),

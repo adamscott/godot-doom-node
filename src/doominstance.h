@@ -1,19 +1,21 @@
 #ifndef DOOMINSTANCE_H
 #define DOOMINSTANCE_H
 
-#include "godot_cpp/variant/utility_functions.hpp"
 #include <cstdint>
 
 #include <godot_cpp/classes/mutex.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/classes/wrapped.hpp>
+#include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
+
+#include "doomcommon.h"
 
 extern "C" {
 #include "doomgeneric/doomgeneric.h"
 #include "doomgeneric/sounds.h"
 
-#include "doomcommon.h"
 #include "doominput.h"
 }
 
@@ -38,7 +40,7 @@ public:
 	static const uint8_t MUSIC_SDL_DEVICES_LENGTH = 6;
 	static snddevice_t music_sdl_devices[MUSIC_SDL_DEVICES_LENGTH];
 
-	static void add_instruction(MusicInstruction &p_instruction);
+	static void add_instruction(Ref<DOOMMusicInstruction> &p_instruction);
 	static bool get_sha1_hex_from_handle(void *p_handle, char *p_buffer);
 	static char *bin2hex(const unsigned char *p_bin, size_t p_length);
 	static bool Godot_InitMusic();
@@ -63,7 +65,7 @@ public:
 	static const uint8_t SOUND_SDL_DEVICES_LENGTH = 6;
 	static snddevice_t sound_godot_devices[SOUND_SDL_DEVICES_LENGTH];
 
-	static void add_instruction(SoundInstruction &p_instruction);
+	static void add_instruction(Ref<DOOMSoundInstruction> &p_instruction);
 	static void GetSfxLumpName(sfxinfo_t *p_sfx, char *p_buf, size_t p_buf_len);
 	static bool CacheSFX(sfxinfo_t *p_sfxinfo);
 	static void Godot_PrecacheSounds(sfxinfo_t *p_sounds, int p_num_sounds);
@@ -109,10 +111,8 @@ public:
 	float mouse_x = 0.0f;
 	float mouse_y = 0.0f;
 	uint32_t sleep_ms = 0;
-	uint8_t sound_instructions_length = 0;
-	SoundInstruction sound_instructions[UINT8_MAX] = {};
-	uint8_t music_instructions_length = 0;
-	MusicInstruction music_instructions[UINT8_MAX] = {};
+	Vector<Ref<DOOMSoundInstruction>> sound_instructions;
+	Vector<Ref<DOOMMusicInstruction>> music_instructions;
 
 	String wad;
 	String config_dir;

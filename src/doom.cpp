@@ -1,62 +1,57 @@
 #include "doom.h"
 
-#include <signal.h>
 #include <stdint.h>
-#include <uchar.h>
-#include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 
-#include "doominstance.h"
-#include "godot_cpp/classes/audio_server.hpp"
-#include "godot_cpp/classes/audio_stream_generator.hpp"
-#include "godot_cpp/classes/audio_stream_generator_playback.hpp"
-#include "godot_cpp/classes/audio_stream_player.hpp"
-#include "godot_cpp/classes/audio_stream_player2d.hpp"
-#include "godot_cpp/classes/audio_stream_wav.hpp"
-#include "godot_cpp/classes/camera2d.hpp"
-#include "godot_cpp/classes/control.hpp"
-#include "godot_cpp/classes/dir_access.hpp"
-#include "godot_cpp/classes/file_access.hpp"
-#include "godot_cpp/classes/global_constants.hpp"
-#include "godot_cpp/classes/hashing_context.hpp"
-#include "godot_cpp/classes/image_texture.hpp"
-#include "godot_cpp/classes/input.hpp"
-#include "godot_cpp/classes/input_event.hpp"
-#include "godot_cpp/classes/input_event_key.hpp"
-#include "godot_cpp/classes/input_event_mouse_button.hpp"
-#include "godot_cpp/classes/input_event_mouse_motion.hpp"
-#include "godot_cpp/classes/node.hpp"
-#include "godot_cpp/classes/os.hpp"
-#include "godot_cpp/classes/project_settings.hpp"
-#include "godot_cpp/classes/scene_tree.hpp"
-#include "godot_cpp/classes/sub_viewport.hpp"
-#include "godot_cpp/classes/sub_viewport_container.hpp"
-#include "godot_cpp/classes/texture_rect.hpp"
-#include "godot_cpp/classes/thread.hpp"
-#include "godot_cpp/classes/time.hpp"
-#include "godot_cpp/core/class_db.hpp"
-#include "godot_cpp/core/memory.hpp"
-#include "godot_cpp/core/object.hpp"
-#include "godot_cpp/core/property_info.hpp"
-#include "godot_cpp/variant/callable.hpp"
-#include "godot_cpp/variant/char_string.hpp"
-#include "godot_cpp/variant/packed_byte_array.hpp"
-#include "godot_cpp/variant/packed_int32_array.hpp"
-#include "godot_cpp/variant/packed_vector2_array.hpp"
-#include "godot_cpp/variant/string.hpp"
-#include "godot_cpp/variant/typed_array.hpp"
-#include "godot_cpp/variant/utility_functions.hpp"
-#include "godot_cpp/variant/variant.hpp"
+#include <godot_cpp/classes/audio_server.hpp>
+#include <godot_cpp/classes/audio_stream_generator.hpp>
+#include <godot_cpp/classes/audio_stream_generator_playback.hpp>
+#include <godot_cpp/classes/audio_stream_player.hpp>
+#include <godot_cpp/classes/audio_stream_player2d.hpp>
+#include <godot_cpp/classes/audio_stream_wav.hpp>
+#include <godot_cpp/classes/camera2d.hpp>
+#include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/dir_access.hpp>
+#include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/global_constants.hpp>
+#include <godot_cpp/classes/hashing_context.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
+#include <godot_cpp/classes/input.hpp>
+#include <godot_cpp/classes/input_event.hpp>
+#include <godot_cpp/classes/input_event_key.hpp>
+#include <godot_cpp/classes/input_event_mouse_button.hpp>
+#include <godot_cpp/classes/input_event_mouse_motion.hpp>
+#include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
+#include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/classes/sub_viewport.hpp>
+#include <godot_cpp/classes/sub_viewport_container.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
+#include <godot_cpp/classes/thread.hpp>
+#include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/memory.hpp>
+#include <godot_cpp/core/object.hpp>
+#include <godot_cpp/core/property_info.hpp>
+#include <godot_cpp/variant/callable.hpp>
+#include <godot_cpp/variant/char_string.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
+#include <godot_cpp/variant/packed_vector2_array.hpp>
+#include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/variant/variant.hpp>
 
+#include "doominstance.h"
 #include "doommus2mid.h"
 
 extern "C" {
 #include <err.h>
-#include <errno.h>
 #include <spawn.h>
-#include <stdio.h>
 #include <unistd.h>
 
 // doomgeneric
@@ -67,17 +62,11 @@ extern "C" {
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-// GodotDoomNode
-#include "doomcommon.h"
-
 // Fluidsynth
-#include "fluidsynth.h"
-#include "fluidsynth/audio.h"
 #include "fluidsynth/midi.h"
 #include "fluidsynth/misc.h"
 #include "fluidsynth/settings.h"
 #include "fluidsynth/synth.h"
-#include "fluidsynth/types.h"
 }
 
 #define SOUND_SUBVIEWPORT_SIZE 512
@@ -328,8 +317,9 @@ void DOOM::pause() {
 
 void DOOM::resume() {
 	if (!_current_midi_file.is_empty()) {
-		MusicInstruction inst;
-		inst.type = MUSIC_INSTRUCTION_TYPE_RESUME_SONG;
+		Ref<DOOMMusicInstruction> inst;
+		inst.instantiate();
+		inst->type = DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_RESUME_SONG;
 		_music_instructions.append(inst);
 	}
 
@@ -416,22 +406,13 @@ void DOOM::_doom_thread_func() {
 
 		// Sounds
 
-		for (int i = 0; i < _doom_instance->sound_instructions_length; i++) {
-			SoundInstruction instruction;
-			SoundInstruction_duplicate(&_doom_instance->sound_instructions[i], &instruction);
-			_sound_instructions.append(instruction);
-		}
-
-		_doom_instance->sound_instructions_length = 0;
+		_sound_instructions.append_array(_doom_instance->sound_instructions);
+		_doom_instance->sound_instructions.clear();
 
 		// Music
 
-		for (int i = 0; i < _doom_instance->music_instructions_length; i++) {
-			MusicInstruction instruction;
-			MusicInstruction_duplicate(&_doom_instance->music_instructions[i], &instruction);
-			_music_instructions.append(instruction);
-		}
-		_doom_instance->music_instructions_length = 0;
+		_music_instructions.append_array(_doom_instance->music_instructions);
+		_doom_instance->music_instructions.clear();
 
 		// Let's sleep the time Doom asks
 		OS::get_singleton()->delay_usec(_doom_instance->sleep_ms * 1000);
@@ -448,15 +429,14 @@ void DOOM::_midi_thread_func() {
 
 		// Parse music instructions already, sooner the better
 
-		for (MusicInstruction instruction : _music_instructions) {
-			switch (instruction.type) {
-				case MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
-					String sha1;
+		for (Ref<DOOMMusicInstruction> &instruction : _music_instructions) {
+			if (instruction.is_null()) {
+				UtilityFunctions::print(vformat("Hello! %s", "World"));
+			}
+			switch (instruction->type) {
+				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_REGISTER_SONG: {
+					String sha1 = instruction->lump_sha1_hex;
 					String midi_file;
-
-					for (int i = 0; i < sizeof(instruction.lump_sha1_hex); i += sizeof(instruction.lump_sha1_hex[0])) {
-						sha1 += vformat("%c", instruction.lump_sha1_hex[i]);
-					}
 
 					Array keys = _wad_files.keys();
 					for (int i = 0; i < keys.size(); i++) {
@@ -493,26 +473,26 @@ void DOOM::_midi_thread_func() {
 					}
 				} break;
 
-				case MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG: {
+				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_UNREGISTER_SONG: {
 					_current_midi_path = "";
 
 				} break;
 
-				case MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
+				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_PLAY_SONG: {
 					if (_fluid_player == nullptr) {
 						_fluid_player = new_fluid_player(_fluid_synth);
 						PackedByteArray stored_midi_file = _stored_midi_files[_current_midi_file];
 						fluid_player_add_mem(_fluid_player, stored_midi_file.ptrw(), stored_midi_file.size());
 					}
 
-					_current_midi_looping = instruction.looping;
+					_current_midi_looping = instruction->looping;
 
 					fluid_player_seek(_fluid_player, 0);
 					fluid_player_set_loop(_fluid_player, _current_midi_looping ? -1 : 0);
 					fluid_player_play(_fluid_player);
 				} break;
 
-				case MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
+				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_RESUME_SONG: {
 					if (_fluid_player == nullptr) {
 						_fluid_player = new_fluid_player(_fluid_synth);
 						PackedByteArray stored_midi_file = _stored_midi_files[_current_midi_file];
@@ -524,13 +504,13 @@ void DOOM::_midi_thread_func() {
 					fluid_player_play(_fluid_player);
 				} break;
 
-				case MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC:
-				case MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
+				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_SHUTDOWN_MUSIC:
+				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_STOP_SONG: {
 					_stop_music();
 					OS::get_singleton()->delay_usec(100);
 				} break;
 
-				case MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
+				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_PAUSE_SONG: {
 					if (_fluid_player != nullptr) {
 						_current_midi_tick = fluid_player_get_current_tick(_fluid_player);
 					}
@@ -539,11 +519,11 @@ void DOOM::_midi_thread_func() {
 					OS::get_singleton()->delay_usec(100);
 				} break;
 
-				case MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {
-					// current_midi_volume = instruction.volume;
+				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_SET_MUSIC_VOLUME: {
+					// current_midi_volume = instruction->volume;
 				} break;
 
-				case MusicInstructionType::MUSIC_INSTRUCTION_TYPE_EMPTY:
+				case DOOMMusicInstruction::MUSIC_INSTRUCTION_TYPE_EMPTY:
 				default: {
 				}
 			}
@@ -958,12 +938,12 @@ void DOOM::_update_sounds() {
 		return;
 	}
 
-	for (SoundInstruction instruction : _sound_instructions) {
-		switch (instruction.type) {
-			case SOUND_INSTRUCTION_TYPE_START_SOUND: {
-				String name = vformat("DS%s", String(instruction.name).to_upper());
+	for (Ref<DOOMSoundInstruction> &instruction : _sound_instructions) {
+		switch (instruction->type) {
+			case DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_START_SOUND: {
+				String name = vformat("DS%s", instruction->name.to_upper());
 				AudioStreamPlayer *source = (AudioStreamPlayer *)sound_container->get_node_or_null(name);
-				String channel_name = vformat("SoundSubViewportContainer/SoundSubViewport/Channel%s", instruction.channel);
+				String channel_name = vformat("SoundSubViewportContainer/SoundSubViewport/Channel%s", instruction->channel);
 				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)get_node_or_null(channel_name);
 
 				if (source == nullptr || channel == nullptr) {
@@ -973,12 +953,12 @@ void DOOM::_update_sounds() {
 				channel->stop();
 				channel->set_stream(source->get_stream());
 				// squatting_sound->set_pitch_scale(
-				// 		UtilityFunctions::remap(instruction.pitch, 0, INT8_MAX, 0, 2));
+				// 		UtilityFunctions::remap(instruction->pitch, 0, INT8_MAX, 0, 2));
 				channel->set_volume_db(
 						UtilityFunctions::linear_to_db(
-								UtilityFunctions::remap(instruction.volume, 0.0, INT8_MAX, 0.0, 2.0)));
+								UtilityFunctions::remap(instruction->volume, 0.0, INT8_MAX, 0.0, 2.0)));
 
-				double pan = UtilityFunctions::remap(instruction.sep, 0, INT8_MAX, -1, 1);
+				double pan = UtilityFunctions::remap(instruction->sep, 0, INT8_MAX, -1, 1);
 				channel->set_position(Vector2(
 						(SOUND_SUBVIEWPORT_SIZE / 2.0) * pan,
 						0));
@@ -986,8 +966,8 @@ void DOOM::_update_sounds() {
 				channel->play();
 			} break;
 
-			case SOUND_INSTRUCTION_TYPE_STOP_SOUND: {
-				String channel_name = vformat("SoundSubViewportContainer/SoundSubViewport/Channel%s", instruction.channel);
+			case DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_STOP_SOUND: {
+				String channel_name = vformat("SoundSubViewportContainer/SoundSubViewport/Channel%s", instruction->channel);
 				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)get_node_or_null(channel_name);
 				if (channel == nullptr) {
 					continue;
@@ -996,8 +976,8 @@ void DOOM::_update_sounds() {
 				channel->stop();
 			} break;
 
-			case SOUND_INSTRUCTION_TYPE_UPDATE_SOUND_PARAMS: {
-				String channel_name = vformat("SoundSubViewportContainer/SoundSubViewport/Channel%s", instruction.channel);
+			case DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_UPDATE_SOUND_PARAMS: {
+				String channel_name = vformat("SoundSubViewportContainer/SoundSubViewport/Channel%s", instruction->channel);
 				AudioStreamPlayer2D *channel = (AudioStreamPlayer2D *)get_node_or_null(channel_name);
 				if (channel == nullptr) {
 					continue;
@@ -1005,14 +985,14 @@ void DOOM::_update_sounds() {
 
 				channel->set_volume_db(
 						UtilityFunctions::linear_to_db(
-								UtilityFunctions::remap(instruction.volume, 0.0, INT8_MAX, 0, 2)));
-				double pan = UtilityFunctions::remap(instruction.sep, 0, INT8_MAX, -1, 1);
+								UtilityFunctions::remap(instruction->volume, 0.0, INT8_MAX, 0, 2)));
+				double pan = UtilityFunctions::remap(instruction->sep, 0, INT8_MAX, -1, 1);
 				channel->set_position(Vector2(
 						(SOUND_SUBVIEWPORT_SIZE / 2.0) * pan,
 						0));
 			} break;
 
-			case SOUND_INSTRUCTION_TYPE_SHUTDOWN_SOUND: {
+			case DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_SHUTDOWN_SOUND: {
 				SubViewport *sound_subviewport = (SubViewport *)get_node_or_null("SoundSubViewportContainer/SoundSubViewport");
 				if (sound_subviewport == nullptr) {
 					continue;
@@ -1029,8 +1009,8 @@ void DOOM::_update_sounds() {
 				}
 			} break;
 
-			case SOUND_INSTRUCTION_TYPE_EMPTY:
-			case SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND:
+			case DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_EMPTY:
+			case DOOMSoundInstruction::SOUND_INSTRUCTION_TYPE_PRECACHE_SOUND:
 			default: {
 				continue;
 			}

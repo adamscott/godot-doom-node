@@ -8,6 +8,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "doom.h"
+#include "doomcommon.h"
 #include "doominstance.h"
 #include "doommus2mid.h"
 
@@ -21,6 +22,8 @@ void initialize_godot_doom_module(ModuleInitializationLevel p_level) {
 	ClassDB::register_class<DOOM>();
 	ClassDB::register_class<DOOMMus2Mid>();
 	ClassDB::register_class<DOOMInstance>();
+	ClassDB::register_class<DOOMSoundInstruction>();
+	ClassDB::register_class<DOOMMusicInstruction>();
 }
 
 void uninitialize_godot_doom_module(ModuleInitializationLevel p_level) {
