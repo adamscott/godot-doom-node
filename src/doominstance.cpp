@@ -1,15 +1,16 @@
 #include "doominstance.h"
 #include "doomcommon.h"
+#include "godot_cpp/classes/time.hpp"
 
 #include <ctype.h>
 #include <cstdint>
 
 #include <godot_cpp/classes/global_constants.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 extern "C" {
-#include <sys/time.h>
 #include <unistd.h>
 
 #include "doomgeneric/deh_str.h"
@@ -546,19 +547,11 @@ void DOOMInstance::DG_DrawFrame() {
 
 void DOOMInstance::DG_SleepMs(uint32_t p_ms) {
 	sleep_ms = p_ms;
-	usleep(p_ms * 1000);
+	OS::get_singleton()->delay_msec(p_ms);
 }
 
 uint32_t DOOMInstance::DG_GetTicksMs() {
-	// printf("DG_GetTicksMs: %ld\n", ticks_msec);
-	// return ticks_msec;
-
-	struct timeval tp;
-	struct timezone tzp;
-
-	gettimeofday(&tp, &tzp);
-
-	return (tp.tv_sec * 1000) + (tp.tv_usec / 1000); /* return milliseconds */
+	return Time::get_singleton()->get_ticks_msec(); /* return milliseconds */
 }
 
 int DOOMInstance::DG_GetKey(int *p_pressed, unsigned char *p_key) {
