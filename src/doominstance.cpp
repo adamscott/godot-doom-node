@@ -323,7 +323,7 @@ void DOOMInstance::create() {
 }
 
 void DOOMInstance::tick() {
-	doomgeneric_Tick();
+	::doomgeneric_Tick();
 }
 
 unsigned char DOOMInstance::convert_to_doom_key(Key p_doom_key) {
@@ -545,7 +545,6 @@ void DOOMInstance::DG_DrawFrame() {
 
 void DOOMInstance::DG_SleepMs(uint32_t p_ms) {
 	sleep_ms = p_ms;
-	OS::get_singleton()->delay_msec(p_ms);
 }
 
 uint32_t DOOMInstance::DG_GetTicksMs() {

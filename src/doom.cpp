@@ -398,28 +398,22 @@ void DOOM::_doom_thread_func() {
 		}
 
 		// Screenbuffer
-		_doom_instance->mutex->lock();
 		memcpy(_screen_buffer.ptrw(), _doom_instance->screen_buffer.ptrw(), SCREEN_BUFFER_SIZE);
-		_doom_instance->mutex->unlock();
 
 		// Sounds
-		_doom_instance->mutex->lock();
 		_sound_instructions_mutex->lock();
 		_sound_instructions.append_array(_doom_instance->sound_instructions);
 		_doom_instance->sound_instructions.clear();
 		_sound_instructions_mutex->unlock();
-		_doom_instance->mutex->unlock();
 
 		// Music
-		_doom_instance->mutex->lock();
 		_music_instructions_mutex->lock();
 		_music_instructions.append_array(_doom_instance->music_instructions);
 		_doom_instance->music_instructions.clear();
 		_music_instructions_mutex->unlock();
-		_doom_instance->mutex->unlock();
 
 		// Let's sleep the time Doom asks
-		OS::get_singleton()->delay_usec(_doom_instance->sleep_ms * 1000);
+		OS::get_singleton()->delay_msec(_doom_instance->sleep_ms);
 
 		_update_input();
 	}
