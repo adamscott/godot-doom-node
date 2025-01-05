@@ -3,6 +3,8 @@ import os
 
 from SCons.Errors import UserError
 
+import methods
+
 
 def normalize_path(val):
     return val if os.path.isabs(val) else os.path.join(env.Dir("#").abspath, val)
@@ -63,9 +65,10 @@ doomgeneric_files = Glob(
 )
 
 doomgeneric_env = env.Clone()
-doomgeneric_env.Append(
-    CCFLAGS=["-Wno-discarded-qualifiers"], LINKFLAGS=["-Wno-discarded-qualifiers"]
-)
+if methods.using_gcc(doomgeneric_env) or methods.using_clang(doomgeneric_env):
+    doomgeneric_env.Append(
+        CCFLAGS=["-Wno-discarded-qualifiers"], LINKFLAGS=["-Wno-discarded-qualifiers"]
+    )
 doomgeneric_library = doomgeneric_env.StaticLibrary(
     "doomgeneric", source=doomgeneric_files
 )
