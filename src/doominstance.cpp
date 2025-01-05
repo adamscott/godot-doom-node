@@ -613,7 +613,7 @@ void DOOMInstance::DG_GetMouseState(int *p_mouse_x, int *p_mouse_y, int *p_mouse
 
 	mouse_buttons_pressed_length = 0;
 
-	*p_mouse_button_bitfield = left_mouse_button_pressed | right_mouse_button_pressed << 1 | middle_mouse_button_pressed << 2;
+	*p_mouse_button_bitfield = (int)left_mouse_button_pressed | (int)right_mouse_button_pressed << 1 | (int)middle_mouse_button_pressed << 2;
 }
 
 void DOOMInstance::DG_SetWindowTitle(const char *p_title) {
