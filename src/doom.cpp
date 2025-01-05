@@ -556,12 +556,23 @@ void DOOM::_midi_thread_func() {
 					continue;
 				}
 
-				float *bufl = nullptr;
-				float *bufr = nullptr;
-				if (fluid_synth_write_float(_fluid_synth, len_asked, bufl, 0, 1, bufr, 0, 1) == FLUID_FAILED) {
+				float *bufl = (float *)memalloc(len_asked * sizeof(float));
+				if (bufl == nullptr) {
+					break;
+				}
+				float *bufr = (float *)memalloc(len_asked * sizeof(float));
+				if (bufr == nullptr) {
+					memfree(bufl);
 					break;
 				}
 
+				if (fluid_synth_write_float(_fluid_synth, len_asked, bufl, 0, 1, bufr, 0, 1) == FLUID_FAILED) {
+					memfree(bufl);
+					bufl = nullptr;
+					memfree(bufr);
+					bufr = nullptr;
+					break;
+				}
 				PackedVector2Array frames;
 				for (int i = 0; i < len_asked; i++) {
 					frames.append(Vector2(bufl[i], bufr[i]));
@@ -569,6 +580,11 @@ void DOOM::_midi_thread_func() {
 
 				_current_midi_playback->push_buffer(frames);
 				frames.clear();
+
+				memfree(bufl);
+				bufl = nullptr;
+				memfree(bufr);
+				bufr = nullptr;
 
 				_current_midi_tick = fluid_player_get_current_tick(_fluid_player);
 			} break;
