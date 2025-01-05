@@ -49,5 +49,12 @@ demo/bin/*
 **/addons/godot-doom-node/**/*.editor.*
 **/addons/godot-doom-node/**/*.editor
 
+**/*.obj
+
 # libdoomgeneric
 libdoomgeneric.a
+doomgeneric.lib
+thirdparty/doomgeneric
+
+# vcpkg
+vcpkg_installed/*
