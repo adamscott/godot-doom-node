@@ -55,10 +55,14 @@ extern "C" {
 #include "doomgeneric/doomgeneric.h"
 
 // Fluidsynth
-#include "fluidsynth/midi.h"
-#include "fluidsynth/misc.h"
-#include "fluidsynth/settings.h"
-#include "fluidsynth/synth.h"
+#include <fluidsynth/log.h>
+#include <fluidsynth/midi.h>
+#include <fluidsynth/misc.h>
+#include <fluidsynth/settings.h>
+#include <fluidsynth/synth.h>
+
+// Fluidsynth logger
+#include "doomfluidsynthlogger.h"
 }
 
 #define SOUND_SUBVIEWPORT_SIZE 512
@@ -242,9 +246,10 @@ String DOOM::get_soundfont_path() {
 void DOOM::set_soundfont_path(String p_soundfont_path) {
 	_soundfont_path = p_soundfont_path;
 	String global_path = ProjectSettings::get_singleton()->globalize_path(p_soundfont_path);
+	const char *global_path_char = global_path.utf8().ptr();
 
-	if (fluid_is_soundfont(global_path.utf8().ptr())) {
-		_fluid_synth_id = fluid_synth_sfload(_fluid_synth, global_path.utf8().ptr(), true);
+	if (fluid_is_soundfont(global_path_char)) {
+		_fluid_synth_id = fluid_synth_sfload(_fluid_synth, global_path_char, true);
 	} else if (_fluid_synth_id != -1) {
 		fluid_synth_sfunload(_fluid_synth, _fluid_synth_id, true);
 		_fluid_synth_id = -1;
@@ -1141,6 +1146,7 @@ DOOM::DOOM() {
 
 	_fluid_settings = new_fluid_settings();
 	fluid_settings_setstr(_fluid_settings, "player.timing-source", "system");
+	fluid_set_log_function(FLUID_ERR, ::doom_custom_log_function, nullptr);
 	_fluid_synth = new_fluid_synth(_fluid_settings);
 	fluid_synth_set_gain(_fluid_synth, 0.8f);
 	_fluid_player = new_fluid_player(_fluid_synth);

@@ -43,7 +43,8 @@ env = SConscript("godot-cpp/SConstruct", {"env": clonedEnv, "customs": customs})
 env.Append(CPPPATH=[os.path.abspath("src/"), os.path.abspath("thirdparty/doomgeneric")])
 env.Append(CPPDEFINES=["FEATURE_SOUND", "FEATURE_SOUND_GODOT"])
 
-sources = Glob("src/*.cpp", "src/*.c")
+sources = Glob("src/*.cpp")
+sources += Glob("src/*.c")
 doomgeneric_files = Glob(
     "thirdparty/doomgeneric/doomgeneric/*.c",
     exclude=[
