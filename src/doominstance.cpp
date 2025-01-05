@@ -11,8 +11,6 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 extern "C" {
-#include <unistd.h>
-
 #include "doomgeneric/deh_str.h"
 #include "doomgeneric/doomgeneric.h"
 #include "doomgeneric/doomkeys.h"
