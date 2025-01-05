@@ -62,6 +62,9 @@ doomgeneric_files = Glob(
 )
 
 doomgeneric_env = env.Clone()
+doomgeneric_env.Append(
+    CCFLAGS=["-Wno-discarded-qualifiers"], LINKFLAGS=["-Wno-discarded-qualifiers"]
+)
 doomgeneric_library = doomgeneric_env.StaticLibrary(
     "doomgeneric", source=doomgeneric_files
 )
