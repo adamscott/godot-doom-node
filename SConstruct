@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import os
-import sys
-import shutil
+
 from SCons.Errors import UserError
 
 
@@ -24,18 +23,11 @@ env = Environment()
 customs = [os.path.abspath("custom.py")]
 opts = Variables(customs, ARGUMENTS)
 opts.Add(
-    BoolVariable(
-        "compiledb",
-        "Generate compilation DB (`compile_commands.json`) for external tools",
-        False,
-    )
+    PathVariable("fluidsynth_lib_path", help="Path to fluidsynth lib path", default="/")
 )
 opts.Add(
     PathVariable(
-        "compiledb_file",
-        help="Path to a custom compile_commands.json",
-        default=normalize_path("compile_commands.json"),
-        validator=validate_compiledb_file,
+        "fluidsynth_include_path", help="Path to fluidsynth lib path", default="/"
     )
 )
 opts.Update(env)
@@ -81,10 +73,15 @@ doomgeneric_library = doomgeneric_env.StaticLibrary(
 )
 env.Append(LIBS=[doomgeneric_library])
 
-# Fluidsynth
 env.Append(
-    LIBS=["fluidsynth"], LIBPATH=["/opt/local/lib"], CPPPATH=["/opt/local/include"]
+    LIBS=["fluidsynth"],
+    LIBPATH=[env["fluidsynth_lib_path"]],
+    CPPPATH=[env["fluidsynth_include_path"]],
 )
+
+# Fluidsynth
+if env["platform"] == "windows":
+    env.Append(LIBS=["kernel32", "user32"])
 
 root_addons = os.path.join(".", "addons", "godot-doom-node", env["platform"])
 root_demo_addons = os.path.join("demo", root_addons)

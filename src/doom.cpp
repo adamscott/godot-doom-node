@@ -51,8 +51,6 @@
 #include "doommus2mid.h"
 
 extern "C" {
-#include <unistd.h>
-
 // doomgeneric
 #include "doomgeneric/doomgeneric.h"
 
@@ -558,7 +556,8 @@ void DOOM::_midi_thread_func() {
 					continue;
 				}
 
-				float bufl[len_asked], bufr[len_asked];
+				float *bufl = nullptr;
+				float *bufr = nullptr;
 				if (fluid_synth_write_float(_fluid_synth, len_asked, bufl, 0, 1, bufr, 0, 1) == FLUID_FAILED) {
 					break;
 				}
