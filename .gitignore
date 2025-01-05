@@ -61,3 +61,4 @@ vcpkg_installed/*
 
 # Python
 .venv/
+__pycache__
