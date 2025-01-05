@@ -10,3 +10,11 @@ indent_size = 2
 [*.{h,cpp,c}]
 indent_style = tab
 indent_size = 4
+
+[*.py]
+indent_style = tab
+indent_size = 4
+
+[SConstruct]
+indent_style = tab
+indent_size = 4
