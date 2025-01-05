@@ -1,5 +1,5 @@
 diff --git a/doomgeneric/i_sound.c b/doomgeneric/i_sound.c
-index c80a9d1..b6c43c0 100644
+index c80a9d1..c5afae6 100644
 --- a/doomgeneric/i_sound.c
 +++ b/doomgeneric/i_sound.c
 @@ -18,7 +18,7 @@
@@ -11,6 +11,15 @@ index c80a9d1..b6c43c0 100644
  #include <SDL_mixer.h>
  #endif
  
+@@ -408,7 +408,7 @@ void I_BindSoundVariables(void)
+     M_BindVariable("snd_samplerate",    &snd_samplerate);
+     M_BindVariable("snd_cachesize",     &snd_cachesize);
+ 
+-#ifdef FEATURE_SOUND
++#if defined(FEATURE_SOUND) && !defined(FEATURE_SOUND_GODOT)
+     M_BindVariable("use_libsamplerate",   &use_libsamplerate);
+     M_BindVariable("libsamplerate_scale", &libsamplerate_scale);
+ #endif
 diff --git a/doomgeneric/i_swap.h b/doomgeneric/i_swap.h
 index 11135c0..189eb82 100644
 --- a/doomgeneric/i_swap.h
