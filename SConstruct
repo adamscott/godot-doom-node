@@ -22,14 +22,8 @@ def get_compiledb_file(env):
 env = Environment()
 customs = [os.path.abspath("custom.py")]
 opts = Variables(customs, ARGUMENTS)
-opts.Add(
-    PathVariable("fluidsynth_lib_path", help="Path to fluidsynth lib path", default="/")
-)
-opts.Add(
-    PathVariable(
-        "fluidsynth_include_path", help="Path to fluidsynth lib path", default="/"
-    )
-)
+opts.Add("fluidsynth_lib_path", "Path to fluidsynth lib path", "")
+opts.Add("fluidsynth_include_path", "Path to fluidsynth lib path", "")
 opts.Update(env)
 
 clonedEnv = env.Clone()
