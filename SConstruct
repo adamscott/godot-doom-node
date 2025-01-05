@@ -65,9 +65,13 @@ doomgeneric_files = Glob(
 )
 
 doomgeneric_env = env.Clone()
-if methods.using_gcc(doomgeneric_env) or methods.using_clang(doomgeneric_env):
+if methods.using_gcc(doomgeneric_env):
     doomgeneric_env.Append(
         CCFLAGS=["-Wno-discarded-qualifiers"], LINKFLAGS=["-Wno-discarded-qualifiers"]
+    )
+elif methods.using_clang(doomgeneric_env):
+    doomgeneric_env.Append(
+        CCFLAGS=["-Wno-ignored-qualifiers"], LINKFLAGS=["-Wno-ignored-qualifiers"]
     )
 doomgeneric_library = doomgeneric_env.StaticLibrary(
     "doomgeneric", source=doomgeneric_files
