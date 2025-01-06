@@ -2,6 +2,8 @@
 import os
 
 from SCons.Errors import UserError
+from SCons.Script import ARGUMENTS
+from SCons.Variables import Variables
 
 import methods
 
@@ -24,8 +26,7 @@ def get_compiledb_file(env):
 env = Environment()
 customs = [os.path.abspath("custom.py")]
 opts = Variables(customs, ARGUMENTS)
-opts.Add("fluidsynth_lib_path", "Path to fluidsynth lib path", "")
-opts.Add("fluidsynth_include_path", "Path to fluidsynth lib path", "")
+opts.Add("pkg_config_path", "Set pkg_config_path", "")
 opts.Update(env)
 
 clonedEnv = env.Clone()
@@ -74,19 +75,20 @@ elif methods.using_clang(doomgeneric_env):
         CCFLAGS=["-Wno-ignored-qualifiers"], LINKFLAGS=["-Wno-ignored-qualifiers"]
     )
 doomgeneric_library = doomgeneric_env.StaticLibrary(
-    "doomgeneric", source=doomgeneric_files
+    "doomgeneric", 
+    source=doomgeneric_files,
 )
 env.Append(LIBS=[doomgeneric_library])
 
-env.Append(
-    LIBS=["fluidsynth"],
-    LIBPATH=[env["fluidsynth_lib_path"]],
-    CPPPATH=[env["fluidsynth_include_path"]],
-)
+env.Append(ENV={
+    "PKG_CONFIG_PATH": env["pkg_config_path"]
+})
+env.ParseConfig("pkg-config fluidsynth --cflags --libs")
 
 # Fluidsynth
 if env["platform"] == "windows":
-    env.Append(LIBS=["kernel32", "user32"])
+    env.Append(LIBS=["user32", "Advapi32", "Shell32"])
+
 
 root_addons = os.path.join(".", "addons", "godot-doom-node", env["platform"])
 root_demo_addons = os.path.join("demo", root_addons)

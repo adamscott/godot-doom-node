@@ -245,11 +245,13 @@ String DOOM::get_soundfont_path() {
 
 void DOOM::set_soundfont_path(String p_soundfont_path) {
 	_soundfont_path = p_soundfont_path;
-	String global_path = ProjectSettings::get_singleton()->globalize_path(p_soundfont_path);
-	const char *global_path_char = global_path.utf8().ptr();
-
-	if (fluid_is_soundfont(global_path_char)) {
-		_fluid_synth_id = fluid_synth_sfload(_fluid_synth, global_path_char, true);
+	String soundfont_global_path = ProjectSettings::get_singleton()->globalize_path(p_soundfont_path);
+	// Windows compatibility.
+	soundfont_global_path = soundfont_global_path.replace("/", "\\");
+	const char *soundfont_global_path_char = soundfont_global_path.utf8().ptr();
+	
+	if (fluid_is_soundfont(soundfont_global_path_char)) {
+		_fluid_synth_id = fluid_synth_sfload(_fluid_synth, soundfont_global_path_char, true);
 	} else if (_fluid_synth_id != -1) {
 		fluid_synth_sfunload(_fluid_synth, _fluid_synth_id, true);
 		_fluid_synth_id = -1;
