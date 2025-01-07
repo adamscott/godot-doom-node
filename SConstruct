@@ -4,6 +4,7 @@ import os
 from SCons.Errors import UserError
 from SCons.Script import ARGUMENTS
 from SCons.Variables import Variables
+from SCons.Environment import Environment
 
 import methods
 
@@ -23,7 +24,7 @@ def get_compiledb_file(env):
     return normalize_path(env.get("compiledb_file", "compile_commands.json"))
 
 
-env = Environment()
+env: Environment = Environment()
 customs = [os.path.abspath("custom.py")]
 opts = Variables(customs, ARGUMENTS)
 opts.Add("pkg_config_path", "Set pkg_config_path", "")
@@ -75,15 +76,13 @@ elif methods.using_clang(doomgeneric_env):
         CCFLAGS=["-Wno-ignored-qualifiers"], LINKFLAGS=["-Wno-ignored-qualifiers"]
     )
 doomgeneric_library = doomgeneric_env.StaticLibrary(
-    "doomgeneric", 
+    "doomgeneric",
     source=doomgeneric_files,
 )
 env.Append(LIBS=[doomgeneric_library])
 
-env.Append(ENV={
-    "PKG_CONFIG_PATH": env["pkg_config_path"]
-})
-env.ParseConfig("pkg-config fluidsynth --cflags --libs")
+env.Append(ENV={"PKG_CONFIG_PATH": env["pkg_config_path"]})
+env.ParseConfig("pkg-config fluidsynth --cflags --libs", unique=False)
 
 # Fluidsynth
 if env["platform"] == "windows":
