@@ -57,7 +57,8 @@ doomgeneric.lib
 thirdparty/doomgeneric
 
 # vcpkg
-vcpkg_installed/*
+vcpkg_installed
+vcpkg_installed_*
 
 # Python
 .venv/
