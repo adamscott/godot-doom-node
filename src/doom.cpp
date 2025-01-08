@@ -42,6 +42,7 @@
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -108,6 +109,14 @@ void DOOM::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_soundfont_path"), &DOOM::get_soundfont_path);
 	ClassDB::bind_method(D_METHOD("set_soundfont_path", "soundfont_path"), &DOOM::set_soundfont_path);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "assets_soundfont_path", PROPERTY_HINT_FILE, "*.sf2,*.sf3"), "set_soundfont_path", "get_soundfont_path");
+
+	ClassDB::bind_method(D_METHOD("get_sound_bus"), &DOOM::get_sound_bus);
+	ClassDB::bind_method(D_METHOD("set_sound_bus", "sound_bus"), &DOOM::set_sound_bus);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "sound_bus"), "set_sound_bus", "get_sound_bus");
+
+	ClassDB::bind_method(D_METHOD("get_music_bus"), &DOOM::get_music_bus);
+	ClassDB::bind_method(D_METHOD("set_music_bus", "music_bus"), &DOOM::set_music_bus);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "music_bus"), "set_music_bus", "get_music_bus");
 
 	ClassDB::bind_method(D_METHOD("get_wasd_mode"), &DOOM::get_wasd_mode);
 	ClassDB::bind_method(D_METHOD("set_wasd_mode", "wasd_mode_enabled"), &DOOM::set_wasd_mode);
@@ -246,16 +255,55 @@ String DOOM::get_soundfont_path() {
 void DOOM::set_soundfont_path(String p_soundfont_path) {
 	_soundfont_path = p_soundfont_path;
 	String soundfont_global_path = ProjectSettings::get_singleton()->globalize_path(p_soundfont_path);
-	// Windows compatibility.
-	soundfont_global_path = soundfont_global_path.replace("/", "\\");
-	const char *soundfont_global_path_char = soundfont_global_path.utf8().ptr();
-	
+	CharString soundfont_global_path_cs = soundfont_global_path.utf8();
+	const char *soundfont_global_path_char = soundfont_global_path_cs.ptr();
+	UtilityFunctions::print_verbose(vformat("Loading soundfont: %s", soundfont_global_path_char));
+
 	if (fluid_is_soundfont(soundfont_global_path_char)) {
 		_fluid_synth_id = fluid_synth_sfload(_fluid_synth, soundfont_global_path_char, true);
 	} else if (_fluid_synth_id != -1) {
 		fluid_synth_sfunload(_fluid_synth, _fluid_synth_id, true);
 		_fluid_synth_id = -1;
 	}
+
+	if (!soundfont_global_path.is_empty() && _fluid_synth_id == -1) {
+		UtilityFunctions::printerr(vformat("Could not load soundfont \"%s\"", soundfont_global_path));
+	}
+}
+
+StringName DOOM::get_sound_bus() {
+	return _sound_bus;
+}
+
+void DOOM::set_sound_bus(StringName p_sound_bus) {
+	_sound_bus = p_sound_bus;
+
+	SubViewport *subviewport = Object::cast_to<SubViewport>(get_node_or_null("\%SoundSubViewport"));
+	if (subviewport == nullptr) {
+		return;
+	}
+	TypedArray<Node> children = subviewport->get_children();
+	for (int i = 0; i < children.size(); i++) {
+		AudioStreamPlayer2D *player = Object::cast_to<AudioStreamPlayer2D>(children[i]);
+		if (player == nullptr) {
+			continue;
+		}
+		player->set_bus(_sound_bus);
+	}
+}
+
+StringName DOOM::get_music_bus() {
+	return _music_bus;
+}
+
+void DOOM::set_music_bus(StringName p_music_bus) {
+	_music_bus = p_music_bus;
+
+	AudioStreamPlayer *player = Object::cast_to<AudioStreamPlayer>(get_node_or_null("\%Player"));
+	if (player == nullptr) {
+		return;
+	}
+	player->set_bus(p_music_bus);
 }
 
 bool DOOM::get_autosave() {
@@ -734,7 +782,7 @@ void DOOM::_midi_fetching_thread_func() {
 }
 
 void DOOM::_append_sounds() {
-	SubViewportContainer *sound_subviewportcontainer = (SubViewportContainer *)get_node_or_null("SoundSubViewportContainer");
+	SubViewportContainer *sound_subviewportcontainer = Object::cast_to<SubViewportContainer>(get_node_or_null("SoundSubViewportContainer"));
 	if (sound_subviewportcontainer != nullptr) {
 		sound_subviewportcontainer->set_name("tobedeleted");
 		sound_subviewportcontainer->queue_free();
@@ -743,9 +791,9 @@ void DOOM::_append_sounds() {
 	sound_subviewportcontainer->set_visible(false);
 	sound_subviewportcontainer->set_name("SoundSubViewportContainer");
 	call_deferred("add_child", sound_subviewportcontainer);
-	// sound_subviewportcontainer->set_owner(get_tree()->get_edited_scene_root());
+	sound_subviewportcontainer->call_deferred("set_owner", this);
 
-	SubViewport *sound_subviewport = (SubViewport *)get_node_or_null("SoundSubViewport");
+	SubViewport *sound_subviewport = Object::cast_to<SubViewport>(get_node_or_null("SoundSubViewport"));
 	if (sound_subviewport != nullptr) {
 		sound_subviewport->set_name("tobedeleted");
 		sound_subviewport->queue_free();
@@ -754,21 +802,22 @@ void DOOM::_append_sounds() {
 	sound_subviewport->set_as_audio_listener_2d(true);
 	sound_subviewport->set_name("SoundSubViewport");
 	sound_subviewport->set_size(Vector2(SOUND_SUBVIEWPORT_SIZE, SOUND_SUBVIEWPORT_SIZE));
+	sound_subviewport->set_unique_name_in_owner(true);
 	sound_subviewportcontainer->add_child(sound_subviewport);
-	// sound_subviewport->set_owner(get_tree()->get_edited_scene_root());
+	sound_subviewport->call_deferred("set_owner", this);
 
 	Camera2D *camera = memnew(Camera2D);
 	camera->set_name("Camera2D");
 	sound_subviewport->add_child(camera);
-	// camera->set_owner(get_tree()->get_edited_scene_root());
+	camera->call_deferred("set_owner", this);
 
 	for (int i = 0; i < 16; i++) {
 		AudioStreamPlayer2D *player = memnew(AudioStreamPlayer2D);
 		player->set_position(Vector2(0, 0));
 		sound_subviewport->add_child(player);
 		player->set_name(vformat("Channel%s", i));
-		player->set_bus("SFX");
-		// player->set_owner(get_tree()->get_edited_scene_root());
+		player->set_bus(_sound_bus);
+		player->call_deferred("set_owner", this);
 	}
 
 	Node *sound_container = get_node_or_null("SoundContainer");
@@ -779,7 +828,7 @@ void DOOM::_append_sounds() {
 	sound_container = memnew(Node);
 	call_deferred("add_child", sound_container);
 	sound_container->set_name("SoundContainer");
-	// sound_container->set_owner(get_tree()->get_edited_scene_root());
+	sound_container->call_deferred("set_owner", this);
 
 	Array keys = _wad_files.keys();
 
@@ -791,9 +840,8 @@ void DOOM::_append_sounds() {
 
 		Dictionary info = _wad_files[key];
 
-		AudioStreamPlayer *player = reinterpret_cast<AudioStreamPlayer *>((Object *)info["player"]);
+		AudioStreamPlayer *player = Object::cast_to<AudioStreamPlayer>(info["player"]);
 		sound_container->add_child(player);
-		// player->set_owner(get_tree()->get_edited_scene_root());
 	}
 }
 
@@ -806,13 +854,14 @@ void DOOM::_append_music() {
 	music_container = memnew(Node);
 	call_deferred("add_child", music_container);
 	music_container->set_name("MusicContainer");
-	// music_container->set_owner(get_tree()->get_edited_scene_root());
+	music_container->call_deferred("set_owner", this);
 
 	AudioStreamPlayer *player = memnew(AudioStreamPlayer);
 	music_container->add_child(player);
 	player->set_name("Player");
-	player->set_bus("Music");
-	// player->set_owner(get_tree()->get_edited_scene_root());
+	player->set_unique_name_in_owner(true);
+	player->set_bus(_music_bus);
+	player->call_deferred("set_owner", this);
 
 	Ref<AudioStreamGenerator> stream;
 	stream.instantiate();

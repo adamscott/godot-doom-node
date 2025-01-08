@@ -260,7 +260,8 @@ bool DOOMMus2Mid::read_mus_header(PackedByteArray &p_file, DOOMMus2Mid::MusHeade
 	}
 
 	String header_id = vformat("%c%c%c%c", p_file[0], p_file[1], p_file[2], p_file[3]);
-	strcpy((char *)header->id, strdup(header_id.utf8().get_data()));
+	CharString header_id_cs = header_id.utf8();
+	strcpy((char *)header->id, strdup(header_id_cs.get_data()));
 	header->score_length = p_file.decode_u16(sizeof(header->id));
 	header->score_start = p_file.decode_u16(sizeof(header->id) + sizeof(header->score_length));
 	header->primary_channels = p_file.decode_u16(sizeof(header->id) + sizeof(header->score_length) + sizeof(header->score_start));

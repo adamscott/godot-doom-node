@@ -94,6 +94,9 @@ private:
 	String _wad_path;
 	String _soundfont_path;
 
+	StringName _sound_bus = "SFX";
+	StringName _music_bus = "Music";
+
 	String _current_midi_path;
 	bool current_midi_playing = false;
 	uint32_t _current_midi_tick = 0;
@@ -174,6 +177,10 @@ public:
 	void set_wad_path(String p_wad_path);
 	String get_soundfont_path();
 	void set_soundfont_path(String p_soundfont_path);
+	StringName get_sound_bus();
+	void set_sound_bus(StringName p_sound_bus);
+	StringName get_music_bus();
+	void set_music_bus(StringName p_music_bus);
 
 	void import_assets();
 	void pause();
