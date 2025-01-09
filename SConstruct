@@ -9,21 +9,6 @@ from SCons.Environment import Environment
 import methods
 
 
-def normalize_path(val):
-    return val if os.path.isabs(val) else os.path.join(env.Dir("#").abspath, val)
-
-
-def validate_compiledb_file(key, val, env):
-    if not os.path.isdir(os.path.dirname(normalize_path(val))):
-        raise UserError(
-            "Directory ('%s') does not exist: %s" % (key, os.path.dirname(val))
-        )
-
-
-def get_compiledb_file(env):
-    return normalize_path(env.get("compiledb_file", "compile_commands.json"))
-
-
 env: Environment = Environment()
 customs = [os.path.abspath("custom.py")]
 opts = Variables(customs, ARGUMENTS)
@@ -31,7 +16,6 @@ opts.Add("pkg_config_path", "Set pkg_config_path", "")
 opts.Update(env)
 
 clonedEnv = env.Clone()
-clonedEnv["compiledb"] = False
 env = SConscript("godot-cpp/SConstruct", {"env": clonedEnv, "customs": customs})
 
 # For reference:
