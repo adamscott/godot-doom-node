@@ -3,7 +3,7 @@ import os
 
 from SCons.Errors import UserError
 from SCons.Script import ARGUMENTS
-from SCons.Variables import Variables
+from SCons.Variables import Variables, BoolVariable
 from SCons.Environment import Environment
 
 import methods
@@ -13,6 +13,7 @@ env: Environment = Environment()
 customs = [os.path.abspath("custom.py")]
 opts = Variables(customs, ARGUMENTS)
 opts.Add("pkg_config_path", "Set pkg_config_path", "")
+opts.Add(BoolVariable("use_mingw", "Use MinGW", False))
 opts.Update(env)
 
 clonedEnv = env.Clone()
@@ -68,9 +69,15 @@ env.Append(LIBS=[doomgeneric_library])
 env.Append(ENV={"PKG_CONFIG_PATH": env["pkg_config_path"]})
 env.ParseConfig("pkg-config fluidsynth --cflags --libs", unique=False)
 
+if env["use_mingw"]:
+    env.Append(LINKFLAGS=["-shared"])
+    env["LINKFLAGS"] = [flag for flag in env["LINKFLAGS"] if flag != "-static"]
+
+
 # Fluidsynth
 if env["platform"] == "windows":
     env.Append(LIBS=["user32", "Advapi32", "Shell32"])
+    env.Append(LINKFLAGS=["--verbose"])
 
 
 root_addons = os.path.join(".", "addons", "godot-doom-node", env["platform"])
